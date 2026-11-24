@@ -1,92 +1,460 @@
 <!doctype html>
 <html lang="en">
 <head>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Secret Santa</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Emilys+Candy&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4c2bf;--card:#fff;--ink:#222;--mute:#666;--blue:#2a6df4;--red:#c4372b;--line:#e6e6e6}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:640px;margin:0 auto;padding:20px 14px 60px}
-h1{font-size:1.7rem;margin:.2em 0 .1em}h2{font-size:1.1rem;margin:0 0 .6em}
-.card{background:var(--card);border-radius:14px;padding:18px;margin:14px 0}
-.mute{color:var(--mute)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{background:#f3f3f3;border-radius:8px;padding:8px 12px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
-input,select,button{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #bbb}
-input,select{flex:1;min-width:120px}
-button{background:var(--blue);color:#fff;border:0;cursor:pointer;font-weight:600}
-button.alt{background:#fff;color:var(--blue);border:1px solid var(--blue)}
-button.x{background:none;color:var(--red);padding:2px 8px;font-size:1.2rem}
-button.danger{background:var(--red)}
-:focus-visible{outline:3px solid #111;outline-offset:2px}
-.err{color:var(--red);font-weight:600;min-height:1.3em}
-.reveal{text-align:center;padding:26px 10px}.reveal b{display:block;font-size:2rem;margin:.3em 0}
-a{color:var(--blue)}label.chk{display:flex;gap:6px;align-items:center}label.chk input{flex:none;min-width:0}
+:root { --red: #c60b00; --ink: #000; --body: #2d2d2d; --green: #146827; --page: #f1f1f1; --field: rgba(241,241,241,.67); }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); }
+body { font-family: Inter, system-ui, sans-serif; font-weight: 500; font-size: 16px; line-height: 1.4; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+#app { max-width: 360px; margin: 0 auto; min-height: 100dvh; }
+.screen { position: relative; min-height: 100dvh; padding: 54px 16px 32px; overflow: hidden; }
+.screen.welcome { padding-top: 106px; }
+h1 { margin: 0; font-family: Fraunces, serif; font-weight: 600; font-size: 32px; line-height: 1.4; font-variation-settings: "SOFT" 0, "WONK" 1, "opsz" 32; }
+.lede { margin: 8px 0 0; font-weight: 500; color: var(--body); }
+.stack { display: flex; flex-direction: column; }
+.gap-29 { gap: 29px; }
+.gap-32 { gap: 32px; }
+.gap-24 { gap: 24px; }
+.gap-16 { gap: 16px; }
+.gap-8 { gap: 8px; }
+.mt-date { margin-top: 122px; }
+.mt-price { margin-top: 167px; }
+.mt-share { margin-top: 86px; }
+.mt-quiz { margin-top: 78px; }
+.title-narrow { max-width: 233px; }
+.title-share { max-width: 216px; }
+.title-quiz { max-width: 262px; }
+.card { background: #fff; border-radius: 12px; }
+.card-pad { padding: 12px; }
+.players-card { padding: 24px 12px; display: flex; flex-direction: column; gap: 24px; }
+.field { display: flex; align-items: center; background: var(--field); border-radius: 12px; padding: 12px; border: 1px solid transparent; }
+.field input { width: 100%; border: 0; background: transparent; padding: 0; outline: none; font-weight: 500; line-height: 1.4; }
+.field input::placeholder { color: #000; opacity: 1; }
+.player-row { display: flex; align-items: center; gap: 8px; }
+.player-row .field { flex: 1; min-width: 0; }
+.remove-player { flex: none; width: 32px; height: 32px; padding: 0; border: 0; background: transparent; color: #000; font-size: 20px; line-height: 1; }
+.option { width: 100%; text-align: left; background: var(--field); border-radius: 12px; border: 1px solid transparent; padding: 12px; font-weight: 500; line-height: 1.4; }
+.option.selected { border-color: var(--green); }
+.q-kicker { margin: 0; font-weight: 400; font-size: 12px; line-height: 1.4; color: var(--green); }
+.q-text { margin: 4px 0 0; font-weight: 500; }
+.btn { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 64px; padding: 20px 44px; border: 0; border-radius: 16px; background: var(--red); color: #fff; overflow: hidden; font-family: Fraunces, serif; font-weight: 600; font-size: 26px; letter-spacing: -0.52px; line-height: normal; font-variation-settings: "SOFT" 0, "WONK" 1, "opsz" 26; }
+.btn span { white-space: nowrap; }
+.btn .flake { position: absolute; top: 0; pointer-events: none; }
+.btn .flake-l { left: 0; }
+.btn .flake-r { right: 0; }
+.add { position: relative; width: 100%; border: 2px solid #ed372c; border-radius: 12px; background: transparent; color: #ed372c; padding: 12px 48px; font-family: Fraunces, serif; font-weight: 400; font-size: 16px; letter-spacing: -0.32px; text-align: center; box-shadow: 0 0 5px rgba(237,55,44,.5), inset 0 0 5px 1px #ed372c; text-shadow: 0 0 2px rgba(237,55,44,.6); font-variation-settings: "SOFT" 0, "WONK" 1; }
+.players-actions { margin-top: 41px; }
+.headline-row { display: flex; gap: 29px; align-items: stretch; }
+.headline-row h1 { flex: 1; min-width: 0; }
+.date-badge, .cap { position: relative; overflow: hidden; border: 2px solid var(--red); border-radius: 12px; background: #fff; }
+.date-badge { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 86px; padding: 12px; background: rgba(255,255,255,.67); }
+.date-badge .month { margin: 0; font-family: Fraunces, serif; font-weight: 600; font-size: 12px; line-height: 1.4; font-variation-settings: "SOFT" 0, "WONK" 1; }
+.date-badge .day { margin: 0; font-family: Fraunces, serif; font-weight: 700; font-size: 24px; line-height: 1.4; font-variation-settings: "SOFT" 0, "WONK" 1; }
+.cap { padding: 22px 14px 20px; }
+.cap p { margin: 0; font-weight: 400; }
+.lights { position: absolute; top: -2px; height: 20px; overflow: hidden; pointer-events: none; }
+.lights-badge { width: 274px; left: calc(50% + 57px); transform: translateX(-50%); }
+.lights-banner { width: 340px; left: calc(50% - 6px); transform: translateX(-50%); }
+.lights img { display: block; }
+.link-copy { margin: 0; color: var(--body); font-weight: 500; line-height: 24px; }
+.link-box { background: #f6f6f6; border-radius: 12px; padding: 14px 12px; }
+.link-box a { color: #000; text-decoration: none; font-weight: 500; line-height: 22px; word-break: break-all; }
+.host-link { display: block; margin-top: 28px; text-align: center; color: var(--body); font-size: 14px; font-weight: 500; }
+.note { margin: 0; color: var(--body); font-weight: 500; font-size: 20px; line-height: 24px; }
+.note.center { text-align: center; line-height: 1.35; }
+.match { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; }
+.match-kicker { margin: 0; width: 100%; text-align: center; font-weight: 400; font-size: 16px; color: var(--green); }
+.match-name { margin: 0; width: 100%; text-align: center; font-family: "Emilys Candy", serif; font-weight: 400; font-size: 56px; line-height: 1.4; }
+.answer { background: #e5f2e8; border-radius: 12px; padding: 12px; }
+.waiting { display: flex; flex-direction: column; gap: 8px; padding: 24px 16px; }
+.waiting-title { margin: 0; font-family: Fraunces, serif; font-weight: 600; font-size: 22px; line-height: 1.4; font-variation-settings: "SOFT" 0, "WONK" 1, "opsz" 22; }
+.waiting-copy { margin: 0; font-weight: 500; color: var(--body); }
+.answers { padding-bottom: 40px; overflow: visible; min-height: 100dvh; }
+.quiz { min-height: 780px; padding-bottom: 150px; }
+.art { position: relative; overflow: hidden; pointer-events: none; }
+.art img { position: absolute; max-width: none; }
+.santa { width: 100%; height: 300px; }
+.santa img { height: 106.31%; width: 106.66%; left: -4.14%; top: -4%; }
+.deco { position: absolute; pointer-events: none; }
+.wreath { width: 155px; height: 153px; }
+.wreath img { height: 106.67%; width: 157.75%; left: -28.17%; top: -4.05%; }
+.wreath.date { left: 224px; top: -13px; }
+.wreath.share { left: 213px; top: -5px; }
+.mistletoe { width: 112px; height: 153px; left: 232px; top: 0; }
+.mistletoe img { height: 109.17%; width: 223.58%; left: -62.15%; top: 0; }
+.ornament { width: 97px; height: 145px; left: 247px; top: 0; }
+.ornament img { height: 113.24%; width: 253.6%; left: -80.83%; top: -4.27%; }
+.gift { width: 110px; height: 160px; }
+.gift img { height: 104.62%; width: 166.92%; left: -32.95%; top: -1.48%; }
+.snowman { width: 133px; height: 153px; left: 235px; top: 3px; }
+.snowman img { height: 109.05%; width: 187.78%; left: -43.52%; top: -5.64%; }
+.wreath-bottom { position: absolute; left: 50%; bottom: -62px; width: 173px; height: 171px; transform: translateX(-50%); }
+.wreath-bottom img { height: 106.67%; width: 157.75%; left: -28.17%; top: -4.05%; }
+:focus-visible { outline: 2px solid #111; outline-offset: 3px; }
 </style>
 </head>
-<body><main id="app">Loading…</main>
+<body>
+<main id="app"></main>
 <script>
-const app=document.getElementById('app');
-const h=(t,a={},...c)=>{const e=document.createElement(t);for(const k in a){k.startsWith('on')?e.addEventListener(k.slice(2),a[k]):k==='class'?e.className=a[k]:e.setAttribute(k,a[k])}e.append(...c.flat().filter(x=>x!=null&&x!==false));return e};
-async function api(path,o={}){
-  const k=localStorage.adminKey;
-  const r=await fetch('/api/'+path,{method:o.method||(o.body?'POST':'GET'),
-    headers:{'content-type':'application/json',...(k?{'x-admin-key':k}:{})},body:o.body?JSON.stringify(o.body):undefined});
-  const d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
-const safeLink=u=>/^https?:\/\//i.test(u||'');
-const wishItem=(w,del)=>h('div',{class:'pill'},h('span',{},safeLink(w.url)?h('a',{href:w.url,target:'_blank',rel:'noopener noreferrer'},w.title):w.title),del?h('button',{class:'x','aria-label':'Remove '+w.title,onclick:()=>del(w)},'×'):null);
-const head=pub=>h('div',{class:'card'},h('h1',{},pub.settings.name),
-  h('div',{class:'mute'},[pub.settings.date&&'Gift exchange: '+pub.settings.date,pub.settings.budget&&'Budget: '+pub.settings.budget].filter(Boolean).join(' · ')));
-const err=h('div',{class:'err',role:'alert'});
-const guard=fn=>async(...a)=>{err.textContent='';try{await fn(...a)}catch(e){err.textContent=e.message}};
+const QUESTIONS = Array.from({ length: 10 }, () => ({
+  prompt: "Out of the following, what’s your Christmas vibe for 2026",
+  options: ["Option 1", "Option 2", "Option 3", "Option 4"]
+}));
 
-async function participant(){
-  const pub=await api('public'),me=+localStorage.me,who=pub.members.find(m=>m.id===me);
-  if(!who){
-    const sel=h('select',{'aria-label':'Your name'},h('option',{value:''},'Choose your name'),pub.members.map(m=>h('option',{value:m.id},m.name)));
-    app.replaceChildren(head(pub),h('div',{class:'card'},h('h2',{},'Who are you?'),
-      pub.members.length?h('div',{class:'row'},sel,h('button',{onclick:()=>{if(sel.value){localStorage.me=sel.value;participant()}}},'Continue')):h('p',{class:'mute'},'The organiser hasn\u2019t added anyone yet. Check back soon.')));
-    return}
-  const wl=h('div'),box=h('div',{class:'card'});
-  const loadWishes=async()=>{const w=await api('wishes/'+me);wl.replaceChildren(...(w.length?w.map(x=>wishItem(x,guard(async x=>{await api('wishes/'+x.id+'?member='+me,{method:'DELETE'});loadWishes()}))):[h('p',{class:'mute'},'Add a few ideas so your Secret Santa knows what you\u2019d like.')]))};
-  const t=h('input',{placeholder:'Gift idea','aria-label':'Gift idea'}),l=h('input',{placeholder:'Link (optional)','aria-label':'Link',inputmode:'url'});
-  const add=guard(async()=>{await api('wishes',{body:{memberId:me,title:t.value,url:l.value}});t.value=l.value='';loadWishes()});
-  const draw=h('div',{class:'card'});
-  if(pub.drawn){
-    draw.append(h('div',{class:'reveal'},h('button',{onclick:guard(async()=>{
-      const a=await api('assignment/'+me);
-      draw.replaceChildren(h('div',{class:'reveal'},h('span',{class:'mute'},'You are the Secret Santa for'),h('b',{},a.name)),
-        h('h2',{},a.name+'\u2019s wish list'),...(a.wishes.length?a.wishes.map(w=>wishItem(w)):[h('p',{class:'mute'},'They haven\u2019t added any gifts yet. Check back later.')]))})},'Reveal who I drew')))
-  }else draw.append(h('p',{class:'mute'},'Names haven\u2019t been drawn yet. Add your wish list while you wait.'));
-  box.append(h('h2',{},'My wish list'),wl,h('div',{class:'row'},t,l,h('button',{onclick:add},'Add')),err);
-  app.replaceChildren(head(pub),h('div',{class:'card'},h('div',{class:'row'},h('span',{},'Hi '+who.name+'!'),h('button',{class:'alt',onclick:()=>{delete localStorage.me;participant()}},'Not you?'))),draw,box);
-  loadWishes()}
+const storeKey = "santa-ui-room";
+const state = {
+  screen: "welcome",
+  date: "",
+  price: "",
+  players: ["", "", ""],
+  code: "",
+  answers: Array(10).fill(null),
+  responses: {},
+  q: 0,
+  copied: false
+};
 
-async function admin(){
-  if(!localStorage.adminKey){
-    const k=h('input',{type:'password',placeholder:'Admin password','aria-label':'Admin password'});
-    app.replaceChildren(h('div',{class:'card'},h('h2',{},'Organiser login'),h('div',{class:'row'},k,h('button',{onclick:()=>{localStorage.adminKey=k.value;admin()}},'Log in')),err));return}
-  let d;try{d=await api('admin')}catch(e){delete localStorage.adminKey;err.textContent=e.message;return admin()}
-  const nm=Object.fromEntries(d.members.map(m=>[m.id,m.name])),re=()=>admin();
-  const a=fn=>guard(async()=>{await fn();re()});
-  const sn=h('input',{value:d.settings.name,'aria-label':'Group name'}),sd=h('input',{value:d.settings.date,placeholder:'Date, e.g. 25 Dec 2026','aria-label':'Date'}),sb=h('input',{value:d.settings.budget,placeholder:'Budget, e.g. \u20B91,000','aria-label':'Budget'});
-  const mn=h('input',{placeholder:'Participant name','aria-label':'Participant name'});
-  const opts=ph=>[h('option',{value:''},ph),...d.members.map(m=>h('option',{value:m.id},m.name))];
-  const eg=h('select',{'aria-label':'Giver'},opts('Giver')),er=h('select',{'aria-label':'Cannot draw'},opts('Cannot draw')),eb=h('input',{type:'checkbox',id:'both',checked:''});
-  app.replaceChildren(
-    h('div',{class:'card'},h('h1',{},'Organiser'),h('p',{class:'mute'},'Participant link: '+location.origin+'/'),err),
-    h('div',{class:'card'},h('h2',{},'Event details'),h('div',{class:'row'},sn,sd,sb,h('button',{onclick:a(()=>api('admin/settings',{body:{name:sn.value,date:sd.value,budget:sb.value}}))},'Save'))),
-    h('div',{class:'card'},h('h2',{},'Participants ('+d.members.length+')'),
-      ...d.members.map(m=>h('div',{class:'pill'},m.name,d.drawn?null:h('button',{class:'x','aria-label':'Remove '+m.name,onclick:a(()=>api('admin/members/'+m.id,{method:'DELETE'}))},'×'))),
-      d.drawn?null:h('div',{class:'row'},mn,h('button',{onclick:a(()=>api('admin/members',{body:{name:mn.value}}))},'Add'))),
-    h('div',{class:'card'},h('h2',{},'Exclusions (only you can see these)'),
-      ...d.exclusions.map(x=>h('div',{class:'pill'},nm[x.giver]+' can\u2019t draw '+nm[x.receiver],h('button',{class:'x','aria-label':'Remove exclusion',onclick:a(()=>api('admin/exclusions/'+x.giver+'/'+x.receiver,{method:'DELETE'}))},'×'))),
-      d.drawn?null:h('div',{class:'row'},eg,er,h('label',{class:'chk'},eb,'Both ways'),h('button',{onclick:a(()=>api('admin/exclusions',{body:{giver:eg.value,receiver:er.value,both:eb.checked}}))},'Add'))),
-    h('div',{class:'card'},h('h2',{},'Draw names'),
-      d.drawn?h('div',{},h('p',{},'Names are drawn and locked. Participants can now reveal who they drew.'),h('button',{class:'danger',onclick:a(async()=>{if(confirm('This erases the current draw for everyone. Continue?'))await api('admin/reset',{method:'POST',body:{}})})},'Reset draw'))
-        :h('div',{},h('p',{class:'mute'},'You won\u2019t see who drew whom, so you can play too.'),h('button',{onclick:a(()=>api('admin/draw',{body:{}}))},'Draw names'))));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = html => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+const app = document.getElementById("app");
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storeKey) || "null");
+    if (!saved) return;
+    state.date = saved.date || "";
+    state.price = saved.price || "";
+    state.players = normalizePlayers(saved.players);
+    state.code = saved.code || "";
+    state.answers = Array.isArray(saved.answers) && saved.answers.length === 10 ? saved.answers : state.answers;
+    state.responses = saved.responses && typeof saved.responses === "object" ? saved.responses : {};
+    state.q = Number.isInteger(saved.q) ? saved.q : 0;
+  } catch {}
 }
-location.hash==='#admin'?admin():participant();
-window.addEventListener('hashchange',()=>location.reload());
-</script></body></html>
+function save() {
+  localStorage.setItem(storeKey, JSON.stringify({
+    date: state.date, price: state.price, players: state.players,
+    code: state.code, answers: state.answers, responses: state.responses, q: state.q
+  }));
+}
+function normalizePlayers(list) {
+  const players = Array.isArray(list) && list.length ? list.map(n => String(n ?? "")) : ["", "", ""];
+  while (players.length < 3) players.push("");
+  while (players.length > 3 && !String(players[players.length - 1]).trim()) players.pop();
+  return players;
+}
+function roomCode() {
+  if (!state.code) state.code = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return state.code;
+}
+function roomUrl() {
+  return location.origin + "/r/" + roomCode();
+}
+function displayUrl() {
+  return location.host + "/r/" + roomCode();
+}
+function namedPlayers() {
+  return state.players.map(n => n.trim()).filter(Boolean);
+}
+function matchName() {
+  return namedPlayers()[0] || "Mansha";
+}
+function gifteeAnswers() {
+  const list = state.responses[matchName()];
+  if (!Array.isArray(list) || list.length !== QUESTIONS.length || list.some(a => a == null)) return null;
+  return list;
+}
+function formatPrice(raw) {
+  const digits = String(raw || "").replace(/[^\d.]/g, "");
+  if (!digits) return "₹1,000";
+  const num = Number(digits);
+  if (!Number.isFinite(num)) return "₹" + raw;
+  return "₹" + num.toLocaleString("en-IN");
+}
+function formatDate(raw) {
+  const fallback = { month: "Dec", day: "20th" };
+  if (!String(raw || "").trim()) return fallback;
+  const parsed = new Date(raw);
+  const date = Number.isNaN(parsed.getTime()) ? null : parsed;
+  const match = String(raw).match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+([A-Za-z]+))?|([A-Za-z]+)\s+(\d{1,2})/);
+  let dayNum, monthIndex;
+  if (date && /[A-Za-z]/.test(raw) || (date && /^\d{4}-\d{2}-\d{2}/.test(raw))) {
+    dayNum = date.getDate();
+    monthIndex = date.getMonth();
+  } else if (match) {
+    const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    const word = (match[2] || match[3] || "").slice(0, 3).toLowerCase();
+    monthIndex = months.indexOf(word);
+    dayNum = Number(match[1] || match[4]);
+    if (monthIndex < 0) return { month: raw.trim().slice(0, 3), day: "" };
+  } else return { month: raw.trim().slice(0, 8), day: "" };
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const suf = (dayNum % 10 === 1 && dayNum !== 11) ? "st" : (dayNum % 10 === 2 && dayNum !== 12) ? "nd" : (dayNum % 10 === 3 && dayNum !== 13) ? "rd" : "th";
+  return { month: months[monthIndex] || fallback.month, day: dayNum + suf };
+}
+function art(cls, src) {
+  return `<div class="art ${cls}" aria-hidden="true"><img src="${src}" alt=""></div>`;
+}
+function button(label, id) {
+  return `<button class="btn" type="button" id="${id}"><img class="flake flake-l" src="/assets/snow-left.svg" alt=""><span>${esc(label)}</span><img class="flake flake-r" src="/assets/snow-right.svg" alt=""></button>`;
+}
+function lights(kind) {
+  const src = kind === "badge" ? "/assets/lights-badge.svg" : "/assets/lights-banner.svg";
+  return `<div class="lights lights-${kind}" aria-hidden="true"><img src="${src}" alt=""></div>`;
+}
+function hostLink() {
+  return `<a class="host-link" href="/">Host setup</a>`;
+}
+function capNote() {
+  return `<div class="cap">${lights("banner")}<p>Host has kept the price cap for this Secret Santa ${esc(formatPrice(state.price))}</p></div>`;
+}
+function dateBadge() {
+  const d = formatDate(state.date);
+  return `<div class="date-badge">${lights("badge")}<p class="month">${esc(d.month)}</p><p class="day">${esc(d.day)}</p></div>`;
+}
+
+function go(screen, url) {
+  state.screen = screen;
+  save();
+  const next = url || (screen === "welcome" ? "/" : screen === "join" || screen === "quiz" || screen === "match" || screen === "answers" ? "/r/" + roomCode() : "/#/" + screen);
+  if (location.pathname + location.hash !== next && location.pathname + location.search + location.hash !== next) {
+    history.pushState({ screen }, "", next);
+  }
+  render();
+}
+
+function screenWelcome() {
+  return `<section class="screen welcome"><div class="stack gap-29">
+    ${art("santa", "/assets/santa.png")}
+    <div class="stack gap-8">
+      <h1>Time for<br>Secret Santa!</h1>
+      <p class="lede">Create a room and share it with your friends to play secret santa</p>
+    </div>
+    ${button("Create Room", "create-room")}
+  </div></section>`;
+}
+function screenDate() {
+  return `<section class="screen">
+    ${art("deco wreath date", "/assets/wreath.png")}
+    <h1 class="title-narrow">Add Gift Exchange Date</h1>
+    <div class="stack mt-date" style="gap:45px">
+      <div class="card card-pad"><label class="field"><input id="date-input" aria-label="Gift exchange date" placeholder="Enter Date" value="${esc(state.date)}"></label></div>
+      ${button("Proceed", "date-next")}
+    </div>
+  </section>`;
+}
+function screenPlayers() {
+  const fields = state.players.map((name, i) => {
+    const input = `<label class="field"><input class="player-input" data-i="${i}" aria-label="Player ${i + 1}" placeholder="Player ${i + 1}" value="${esc(name)}"></label>`;
+    if (i < 3) return input;
+    return `<div class="player-row">${input}<button class="remove-player" type="button" data-i="${i}" aria-label="Remove Player ${i + 1}">✕</button></div>`;
+  }).join("");
+  return `<section class="screen">
+    ${art("deco mistletoe", "/assets/mistletoe.png")}
+    <div class="stack" style="gap:41px">
+      <h1>Add Players</h1>
+      <div class="card players-card">
+        <div class="stack gap-16">${fields}</div>
+        <button class="add" type="button" id="add-player">Add Player</button>
+      </div>
+      ${button("Proceed", "players-next")}
+    </div>
+  </section>`;
+}
+function screenPrice() {
+  return `<section class="screen">
+    ${art("deco ornament", "/assets/ornament.png")}
+    <h1>Add Price Cap</h1>
+    <div class="stack mt-price" style="gap:45px">
+      <div class="card card-pad"><label class="field"><input id="price-input" aria-label="Price cap" inputmode="decimal" placeholder="Enter price" value="${esc(state.price)}"></label></div>
+      ${button("Next", "price-next")}
+    </div>
+  </section>`;
+}
+function screenShare() {
+  roomCode();
+  return `<section class="screen">
+    ${art("deco wreath share", "/assets/wreath.png")}
+    <h1 class="title-share">Link<br>generated!</h1>
+    <div class="stack gap-32 mt-share">
+      <p class="link-copy">Your Secret Santa room is ready!<br>Copy the link and share it with friends.</p>
+      <div class="card card-pad"><div class="link-box"><a id="room-link" href="/r/${esc(state.code)}">${esc(displayUrl())}</a></div></div>
+      ${button(state.copied ? "Copied" : "Copy link", "copy-link")}
+    </div>
+  </section>`;
+}
+function screenJoin() {
+  return `<section class="screen welcome"><div class="stack gap-29">
+    ${art("santa", "/assets/santa.png")}
+    <div class="headline-row">
+      <h1>Time for<br>Secret Santa!</h1>
+      ${dateBadge()}
+    </div>
+    ${button("Let’s Go", "lets-go")}
+    ${capNote()}
+    ${hostLink()}
+  </div></section>`;
+}
+function screenQuiz() {
+  const i = Math.min(state.q, 9);
+  const q = QUESTIONS[i];
+  const last = i === 9;
+  const options = q.options.map((label, n) => `<button class="option${state.answers[i] === n ? " selected" : ""}" type="button" data-option="${n}">${esc(label)}</button>`).join("");
+  return `<section class="screen quiz">
+    <h1 class="title-quiz">Let’s Personalize<br>Your Present</h1>
+    <div class="stack mt-quiz" style="gap:42px">
+      <div class="card card-pad stack gap-16">
+        <div>
+          <p class="q-kicker">Question ${i + 1} of 10</p>
+          <p class="q-text">${esc(q.prompt)}</p>
+        </div>
+        ${options}
+      </div>
+      ${last ? button("Submit", "submit-quiz") : ""}
+      ${hostLink()}
+    </div>
+    ${art("wreath-bottom", "/assets/wreath.png")}
+  </section>`;
+}
+function screenMatch() {
+  return `<section class="screen">
+    ${art("deco wreath share", "/assets/wreath.png")}
+    <div class="stack gap-32">
+      <div class="stack gap-16">
+        <h1 class="title-share">Answers<br>Noted!</h1>
+        <p class="note">Your Santa Santa will take it from here</p>
+      </div>
+      <div class="stack gap-24">
+        <p class="note center">Meanwhile, let’s see who’ll be waiting for your present</p>
+        <div class="card match">
+          ${art("gift", "/assets/gift.png")}
+          <div class="stack" style="width:100%">
+            <p class="match-kicker">Your Christmas Match</p>
+            <p class="match-name">${esc(matchName())}</p>
+          </div>
+        </div>
+      </div>
+      ${button("View Their Answers", "view-answers")}
+      ${hostLink()}
+    </div>
+  </section>`;
+}
+function screenAnswers() {
+  const name = matchName();
+  const theirs = gifteeAnswers();
+  const cards = theirs ? QUESTIONS.map((q, i) => {
+    const answer = q.options[theirs[i]];
+    return `<article class="card card-pad stack gap-16">
+      <div>
+        <p class="q-kicker">Question ${i + 1} of 10</p>
+        <p class="q-text">${esc(q.prompt)}</p>
+      </div>
+      <div class="answer">${esc(answer)}</div>
+    </article>`;
+  }).join("") : `<div class="card waiting">
+      <p class="q-kicker">Waiting on ${esc(name)}</p>
+      <p class="waiting-title">${esc(name)} hasn't added their answers yet</p>
+      <p class="waiting-copy">You'll see them here once they've personalized their present.</p>
+    </div>`;
+  return `<section class="screen answers">
+    ${art("deco snowman", "/assets/snowman.png")}
+    <div class="stack gap-32">
+      <h1 class="title-quiz">${esc(name)}’s<br>Answers</h1>
+      <div class="stack gap-24">${cards}${capNote()}${hostLink()}</div>
+    </div>
+  </section>`;
+}
+
+const views = {
+  welcome: screenWelcome, date: screenDate, players: screenPlayers, price: screenPrice,
+  share: screenShare, join: screenJoin, quiz: screenQuiz, match: screenMatch, answers: screenAnswers
+};
+
+function readInputs() {
+  const date = document.getElementById("date-input");
+  if (date) state.date = date.value;
+  const price = document.getElementById("price-input");
+  if (price) state.price = price.value;
+  document.querySelectorAll(".player-input").forEach(input => {
+    const i = Number(input.dataset.i);
+    if (i < state.players.length) state.players[i] = input.value;
+  });
+}
+
+function render() {
+  readInputs();
+  const view = views[state.screen] || screenWelcome;
+  app.replaceChildren($(view()));
+  bind();
+  window.scrollTo(0, 0);
+}
+
+function bind() {
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
+  on("create-room", () => go("date"));
+  on("date-next", () => { readInputs(); go("players"); });
+  on("add-player", () => { readInputs(); state.players.push(""); save(); render(); });
+  document.querySelectorAll(".remove-player").forEach(btn => {
+    btn.addEventListener("click", () => {
+      readInputs();
+      const i = Number(btn.dataset.i);
+      if (i < 3) return;
+      state.players.splice(i, 1);
+      save();
+      render();
+    });
+  });
+  on("players-next", () => { readInputs(); go("price"); });
+  on("price-next", () => { readInputs(); state.copied = false; go("share"); });
+  on("copy-link", async () => {
+    const url = roomUrl();
+    try { await navigator.clipboard.writeText(url); } catch { /* keep the visible link selectable */ }
+    state.copied = true;
+    save();
+    render();
+  });
+  on("lets-go", () => { state.q = 0; go("quiz"); });
+  on("submit-quiz", () => { if (state.answers[9] == null) return; go("match"); });
+  on("view-answers", () => go("answers"));
+  document.querySelectorAll("[data-option]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const n = Number(btn.dataset.option);
+      state.answers[state.q] = n;
+      if (state.q < 9) state.q += 1;
+      save();
+      render();
+    });
+  });
+}
+
+function boot() {
+  load();
+  const room = location.pathname.match(/^\/r\/([^/]+)\/?$/);
+  if (room) {
+    const code = decodeURIComponent(room[1]);
+    if (state.code && state.code !== code) {
+      state.answers = Array(10).fill(null);
+      state.q = 0;
+    }
+    state.code = code;
+    state.screen = "join";
+  } else if (location.hash.startsWith("#/")) {
+    const name = location.hash.slice(2);
+    state.screen = views[name] ? name : "welcome";
+  }
+  render();
+}
+window.addEventListener("popstate", () => boot());
+boot();
+</script>
+</body>
+</html>
