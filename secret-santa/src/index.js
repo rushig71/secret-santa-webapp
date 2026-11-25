@@ -113,7 +113,7 @@ export default {
         if (sub === 'draw' && m === 'POST') {
           if (drawn) return bad('Names are already drawn. Reset first if you want to redo it.');
           const ids = (await db.prepare('SELECT id FROM members').all()).results.map(r => r.id);
-          if (ids.length < 3) return bad('Add at least 3 participants.');
+          if (ids.length < 2) return bad('Add at least 2 participants so nobody draws themselves.');
           const ban = new Set((await db.prepare('SELECT giver,receiver FROM exclusions').all()).results.map(r => r.giver + ':' + r.receiver));
           const res = solve(ids, ban);
           if (!res) return bad('No valid draw exists with these exclusions. Remove some and try again.');

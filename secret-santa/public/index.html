@@ -4,30 +4,81 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Secret Santa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Emilys+Candy&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4c2bf;--card:#fff;--ink:#222;--mute:#666;--blue:#2a6df4;--red:#c4372b;--line:#e6e6e6}
+:root{--red:#c60b00;--ink:#000;--body:#2d2d2d;--green:#146827;--page:#f1f1f1;--field:rgba(241,241,241,.67)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:640px;margin:0 auto;padding:20px 14px 60px}
-h1{font-size:1.7rem;margin:.2em 0 .1em}h2{font-size:1.1rem;margin:0 0 .6em}
-.card{background:var(--card);border-radius:14px;padding:18px;margin:14px 0}
-.mute{color:var(--mute)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{background:#f3f3f3;border-radius:8px;padding:8px 12px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
-input,select,button{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #bbb}
-input,select{flex:1;min-width:120px}
-button{background:var(--blue);color:#fff;border:0;cursor:pointer;font-weight:600}
-button.alt{background:#fff;color:var(--blue);border:1px solid var(--blue)}
-button.x{background:none;color:var(--red);padding:2px 8px;font-size:1.2rem}
-button.danger{background:var(--red)}
-:focus-visible{outline:3px solid #111;outline-offset:2px}
-.err{color:var(--red);font-weight:600;min-height:1.3em}
-.reveal{text-align:center;padding:26px 10px}.reveal b{display:block;font-size:2rem;margin:.3em 0}
-a{color:var(--blue)}label.chk{display:flex;gap:6px;align-items:center}label.chk input{flex:none;min-width:0}
+html,body{margin:0;background:var(--page);color:var(--ink)}
+body{font-family:Inter,system-ui,sans-serif;font-weight:500;font-size:16px;line-height:1.4}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}
+#app{max-width:360px;margin:0 auto;min-height:100dvh}
+#app.admin{max-width:520px}
+.screen{position:relative;min-height:100dvh;padding:54px 16px 32px;overflow:hidden}
+.screen.welcome{padding-top:106px}
+.screen.hub{padding-bottom:170px}
+h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:32px;line-height:1.4;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 32}
+h2{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:22px;line-height:1.4;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 22}
+.lede{margin:8px 0 0;color:var(--body)}
+.stack{display:flex;flex-direction:column}
+.gap-29{gap:29px}.gap-24{gap:24px}.gap-16{gap:16px}.gap-8{gap:8px}
+.title-narrow{max-width:233px}
+.card{background:#fff;border-radius:12px}.card-pad{padding:12px}
+.field{display:flex;align-items:center;background:var(--field);border-radius:12px;padding:12px;border:1px solid #e3e3e3}
+.field input,.field select{width:100%;border:0;background:transparent;padding:0;outline:none;font-weight:500;line-height:1.4}
+.field input::placeholder{color:#555;opacity:1}
+.btn{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:64px;padding:20px 44px;border:0;border-radius:16px;background:var(--red);color:#fff;overflow:hidden;font-family:Fraunces,serif;font-weight:600;font-size:26px;letter-spacing:-.52px;line-height:normal;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 26}
+.btn span{white-space:nowrap}
+.btn .flake{position:absolute;top:0;pointer-events:none}.btn .flake-l{left:0}.btn .flake-r{right:0}
+.btn.sm{width:auto;height:46px;padding:8px 20px;font-size:18px;letter-spacing:-.2px;border-radius:12px;flex:none}
+.btn.alt{background:#fff;color:var(--red);border:2px solid var(--red)}
+.btn.danger{background:#7a0600}
+.add{width:100%;border:2px solid #ed372c;border-radius:12px;background:transparent;color:#ed372c;padding:12px 24px;font-family:Fraunces,serif;font-weight:400;font-size:16px;letter-spacing:-.32px;text-align:center;box-shadow:0 0 5px rgba(237,55,44,.5),inset 0 0 5px 1px #ed372c;text-shadow:0 0 2px rgba(237,55,44,.6);font-variation-settings:"SOFT" 0,"WONK" 1}
+.headline-row{display:flex;gap:29px;align-items:stretch}.headline-row h1{flex:1;min-width:0}
+.info{display:flex;gap:12px;align-items:stretch;margin-top:24px}.info .cap{flex:1}
+.date-badge,.cap{position:relative;overflow:hidden;border:2px solid var(--red);border-radius:12px;background:#fff}
+.date-badge{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:86px;padding:22px 12px 12px;background:rgba(255,255,255,.67)}
+.date-badge p{margin:0;font-family:Fraunces,serif;font-variation-settings:"SOFT" 0,"WONK" 1}
+.date-badge .month{font-weight:600;font-size:12px}.date-badge .day{font-weight:700;font-size:24px}
+.cap{padding:22px 14px 20px}.cap p{margin:0;font-weight:400}
+.lights{position:absolute;top:-2px;height:20px;overflow:hidden;pointer-events:none}.lights img{display:block}
+.lights-badge{width:274px;left:calc(50% + 57px);transform:translateX(-50%)}
+.lights-banner{width:340px;left:calc(50% - 6px);transform:translateX(-50%)}
+.match{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px}
+.match-kicker{margin:0;width:100%;text-align:center;font-size:16px;font-weight:400;color:var(--green)}
+.match-name{margin:0;width:100%;text-align:center;font-family:"Emilys Candy",serif;font-weight:400;font-size:56px;line-height:1.4}
+.waiting{display:flex;flex-direction:column;gap:8px;padding:24px 16px}
+.waiting-title{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:22px;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 22}
+.waiting-copy{margin:0;color:var(--body)}
+.art{position:relative;overflow:hidden;pointer-events:none}.art img{position:absolute;max-width:none}
+.santa{width:100%;height:300px}.santa img{height:106.31%;width:106.66%;left:-4.14%;top:-4%}
+.deco{position:absolute;pointer-events:none}
+.wreath{width:155px;height:153px}.wreath img{height:106.67%;width:157.75%;left:-28.17%;top:-4.05%}
+.wreath.date{left:224px;top:-13px}
+.mistletoe{width:112px;height:153px;left:232px;top:0}.mistletoe img{height:109.17%;width:223.58%;left:-62.15%;top:0}
+.ornament{width:97px;height:145px;left:247px;top:0}.ornament img{height:113.24%;width:253.6%;left:-80.83%;top:-4.27%}
+.gift{width:110px;height:160px}.gift img{height:104.62%;width:166.92%;left:-32.95%;top:-1.48%}
+.snowman{width:133px;height:153px;left:235px;top:3px}.snowman img{height:109.05%;width:187.78%;left:-43.52%;top:-5.64%}
+.wreath-bottom{position:absolute;left:50%;bottom:-62px;width:173px;height:171px;transform:translateX(-50%)}
+.wreath-bottom img{height:106.67%;width:157.75%;left:-28.17%;top:-4.05%}
+.deco.corner{left:auto;right:-6px;top:-18px;transform:scale(.65);transform-origin:top right}
+.block{position:relative}.block>h2{padding-right:84px;min-height:72px}
+.pill{background:#f6f6f6;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center;word-break:break-word}
+.pill.answer{background:#e5f2e8}
+.pill a{color:#000}
+.x{flex:none;width:32px;height:32px;padding:0;border:0;background:transparent;color:#000;font-size:22px;line-height:1}
+.link{background:none;border:0;padding:0;color:var(--red);text-decoration:underline}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row .field{flex:1;min-width:130px}
+.chk{display:flex;gap:6px;align-items:center}
+.err{color:var(--red);font-weight:500;min-height:1.3em}.err:empty{display:none}
+.mute{color:var(--body)}
+:focus-visible{outline:2px solid #111;outline-offset:3px}
 </style>
 </head>
 <body><main id="app">Loading…</main>
 <script>
-const app=document.getElementById('app');
+const app=document.getElementById('app'),A='/assets/';
 const h=(t,a={},...c)=>{const e=document.createElement(t);for(const k in a){k.startsWith('on')?e.addEventListener(k.slice(2),a[k]):k==='class'?e.className=a[k]:e.setAttribute(k,a[k])}e.append(...c.flat().filter(x=>x!=null&&x!==false));return e};
 async function api(path,o={}){
   const k=localStorage.adminKey;
@@ -35,57 +86,108 @@ async function api(path,o={}){
     headers:{'content-type':'application/json',...(k?{'x-admin-key':k}:{})},body:o.body?JSON.stringify(o.body):undefined});
   const d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
 const safeLink=u=>/^https?:\/\//i.test(u||'');
-const wishItem=(w,del)=>h('div',{class:'pill'},h('span',{},safeLink(w.url)?h('a',{href:w.url,target:'_blank',rel:'noopener noreferrer'},w.title):w.title),del?h('button',{class:'x','aria-label':'Remove '+w.title,onclick:()=>del(w)},'×'):null);
-const head=pub=>h('div',{class:'card'},h('h1',{},pub.settings.name),
-  h('div',{class:'mute'},[pub.settings.date&&'Gift exchange: '+pub.settings.date,pub.settings.budget&&'Budget: '+pub.settings.budget].filter(Boolean).join(' · ')));
 const err=h('div',{class:'err',role:'alert'});
 const guard=fn=>async(...a)=>{err.textContent='';try{await fn(...a)}catch(e){err.textContent=e.message}};
 
+// ---------- shared look ----------
+const art=(cls,src)=>h('div',{class:'art '+cls,'aria-hidden':'true'},h('img',{src:A+src,alt:''}));
+const lights=k=>h('div',{class:'lights lights-'+k,'aria-hidden':'true'},h('img',{src:A+'lights-'+k+'.svg',alt:''}));
+const btn=(label,onclick,x='')=>{const sm=x.includes('sm');return h('button',{class:'btn '+x,type:'button',onclick},
+  sm?null:h('img',{class:'flake flake-l',src:A+'snow-left.svg',alt:''}),h('span',{},label),sm?null:h('img',{class:'flake flake-r',src:A+'snow-right.svg',alt:''}))};
+const field=el=>h('label',{class:'field'},el);
+function formatDate(raw){
+  const fallback={month:'Dec',day:'25th'};
+  if(!String(raw||'').trim())return fallback;
+  const parsed=new Date(raw),date=Number.isNaN(parsed.getTime())?null:parsed;
+  const match=String(raw).match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+([A-Za-z]+))?|([A-Za-z]+)\s+(\d{1,2})/);
+  let dayNum,monthIndex;
+  if(date&&/[A-Za-z]/.test(raw)||(date&&/^\d{4}-\d{2}-\d{2}/.test(raw))){dayNum=date.getDate();monthIndex=date.getMonth()}
+  else if(match){
+    const ms=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    monthIndex=ms.indexOf((match[2]||match[3]||'').slice(0,3).toLowerCase());dayNum=Number(match[1]||match[4]);
+    if(monthIndex<0)return{month:raw.trim().slice(0,3),day:''}}
+  else return{month:raw.trim().slice(0,8),day:''};
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const suf=(dayNum%10===1&&dayNum!==11)?'st':(dayNum%10===2&&dayNum!==12)?'nd':(dayNum%10===3&&dayNum!==13)?'rd':'th';
+  return{month:M[monthIndex]||fallback.month,day:dayNum+suf}}
+const priceText=b=>/^[\d,.\s]+$/.test(b)?'₹'+Number(b.replace(/[^\d.]/g,'')).toLocaleString('en-IN'):b;
+const dateBadge=raw=>{const d=formatDate(raw);return h('div',{class:'date-badge'},lights('badge'),h('p',{class:'month'},d.month),h('p',{class:'day'},d.day))};
+const capNote=b=>h('div',{class:'cap'},lights('banner'),h('p',{},'Host has kept the price cap for this Secret Santa '+priceText(b)));
+const wishItem=(w,del,cls='')=>h('div',{class:'pill '+cls},h('span',{},safeLink(w.url)?h('a',{href:w.url,target:'_blank',rel:'noopener noreferrer'},w.title):w.title),del?h('button',{class:'x','aria-label':'Remove '+w.title,onclick:()=>del(w)},'×'):null);
+
+// ---------- participant page ----------
 async function participant(){
-  const pub=await api('public'),me=+localStorage.me,who=pub.members.find(m=>m.id===me);
+  app.className='';
+  const pub=await api('public'),me=+localStorage.me,who=pub.members.find(m=>m.id===me),s=pub.settings;
+  const hasDate=!!(s.date||'').trim(),hasBudget=!!(s.budget||'').trim();
   if(!who){
     const sel=h('select',{'aria-label':'Your name'},h('option',{value:''},'Choose your name'),pub.members.map(m=>h('option',{value:m.id},m.name)));
-    app.replaceChildren(head(pub),h('div',{class:'card'},h('h2',{},'Who are you?'),
-      pub.members.length?h('div',{class:'row'},sel,h('button',{onclick:()=>{if(sel.value){localStorage.me=sel.value;participant()}}},'Continue')):h('p',{class:'mute'},'The organiser hasn\u2019t added anyone yet. Check back soon.')));
+    app.replaceChildren(h('section',{class:'screen welcome'},h('div',{class:'stack gap-29'},
+      art('santa','santa.webp'),
+      h('div',{class:'headline-row'},h('h1',{},s.name),hasDate?dateBadge(s.date):null),
+      pub.members.length
+        ?[h('div',{class:'card card-pad stack gap-16'},h('h2',{},'Who are you?'),field(sel)),
+          btn('Let’s Go',()=>{if(sel.value){localStorage.me=sel.value;participant()}})]
+        :h('div',{class:'card waiting'},h('p',{class:'waiting-title'},'No one here yet'),h('p',{class:'waiting-copy'},'The organiser hasn’t added anyone yet. Check back soon.')),
+      hasBudget?capNote(s.budget):null)));
     return}
-  const wl=h('div'),box=h('div',{class:'card'});
-  const loadWishes=async()=>{const w=await api('wishes/'+me);wl.replaceChildren(...(w.length?w.map(x=>wishItem(x,guard(async x=>{await api('wishes/'+x.id+'?member='+me,{method:'DELETE'});loadWishes()}))):[h('p',{class:'mute'},'Add a few ideas so your Secret Santa knows what you\u2019d like.')]))};
+  const wl=h('div',{class:'stack gap-8'});
+  const loadWishes=async()=>{const w=await api('wishes/'+me);wl.replaceChildren(...(w.length
+    ?w.map(x=>wishItem(x,guard(async x=>{await api('wishes/'+x.id+'?member='+me,{method:'DELETE'});loadWishes()})))
+    :[h('p',{class:'waiting-copy'},'Add a few ideas so your Secret Santa knows what you’d like.')]))};
   const t=h('input',{placeholder:'Gift idea','aria-label':'Gift idea'}),l=h('input',{placeholder:'Link (optional)','aria-label':'Link',inputmode:'url'});
   const add=guard(async()=>{await api('wishes',{body:{memberId:me,title:t.value,url:l.value}});t.value=l.value='';loadWishes()});
-  const draw=h('div',{class:'card'});
-  if(pub.drawn){
-    draw.append(h('div',{class:'reveal'},h('button',{onclick:guard(async()=>{
-      const a=await api('assignment/'+me);
-      draw.replaceChildren(h('div',{class:'reveal'},h('span',{class:'mute'},'You are the Secret Santa for'),h('b',{},a.name)),
-        h('h2',{},a.name+'\u2019s wish list'),...(a.wishes.length?a.wishes.map(w=>wishItem(w)):[h('p',{class:'mute'},'They haven\u2019t added any gifts yet. Check back later.')]))})},'Reveal who I drew')))
-  }else draw.append(h('p',{class:'mute'},'Names haven\u2019t been drawn yet. Add your wish list while you wait.'));
-  box.append(h('h2',{},'My wish list'),wl,h('div',{class:'row'},t,l,h('button',{onclick:add},'Add')),err);
-  app.replaceChildren(head(pub),h('div',{class:'card'},h('div',{class:'row'},h('span',{},'Hi '+who.name+'!'),h('button',{class:'alt',onclick:()=>{delete localStorage.me;participant()}},'Not you?'))),draw,box);
+  const match=h('div',{class:'stack gap-24'});
+  const gift=(inner)=>h('div',{class:'card match'},art('gift','gift.webp'),h('div',{class:'stack',style:'width:100%'},h('p',{class:'match-kicker'},'Your Christmas Match'),inner));
+  const reveal=guard(async()=>{
+    const a=await api('assignment/'+me);
+    match.replaceChildren(gift(h('p',{class:'match-name'},a.name)),
+      h('section',{class:'block'},art('deco snowman corner','snowman.webp'),h('h2',{},a.name+'’s wish list'),
+        h('div',{class:'stack gap-8'},a.wishes.length?a.wishes.map(w=>wishItem(w,null,'answer')):h('p',{class:'waiting-copy'},'They haven’t added any gifts yet. Check back later.'))))});
+  if(pub.drawn)match.append(gift(btn('Reveal who I drew',reveal)));
+  else match.append(h('div',{class:'card waiting'},h('p',{class:'waiting-title'},'Names haven’t been drawn yet'),h('p',{class:'waiting-copy'},'Add your wish list while you wait. You’ll see who you drew here once the organiser draws names.')));
+  app.replaceChildren(h('section',{class:'screen hub'},
+    art('deco wreath date','wreath.webp'),
+    h('h1',{class:'title-narrow'},s.name),
+    h('p',{class:'lede'},'Hi '+who.name+'! ',h('button',{class:'link',onclick:()=>{delete localStorage.me;participant()}},'Not you?')),
+    hasDate||hasBudget?h('div',{class:'info'},hasDate?dateBadge(s.date):null,hasBudget?capNote(s.budget):null):null,
+    h('div',{class:'stack gap-24',style:'margin-top:24px'},err,match,
+      h('section',{class:'block'},art('deco mistletoe corner','mistletoe.webp'),h('h2',{},'My wish list'),
+        h('div',{class:'stack gap-16'},wl,h('div',{class:'stack gap-8'},field(t),field(l),h('button',{class:'add',type:'button',onclick:add},'Add to wish list'))))),
+    art('wreath-bottom','wreath.webp')));
   loadWishes()}
 
+// ---------- organiser page ----------
 async function admin(){
+  app.className='admin';
+  const shell=(...c)=>h('section',{class:'screen'},art('deco ornament corner','ornament.webp'),...c);
   if(!localStorage.adminKey){
     const k=h('input',{type:'password',placeholder:'Admin password','aria-label':'Admin password'});
-    app.replaceChildren(h('div',{class:'card'},h('h2',{},'Organiser login'),h('div',{class:'row'},k,h('button',{onclick:()=>{localStorage.adminKey=k.value;admin()}},'Log in')),err));return}
+    app.replaceChildren(shell(h('h1',{},'Organiser login'),h('div',{class:'card card-pad stack gap-16',style:'margin-top:24px'},
+      field(k),btn('Log in',()=>{localStorage.adminKey=k.value;admin()},'sm'),err)));return}
   let d;try{d=await api('admin')}catch(e){delete localStorage.adminKey;err.textContent=e.message;return admin()}
   const nm=Object.fromEntries(d.members.map(m=>[m.id,m.name])),re=()=>admin();
   const a=fn=>guard(async()=>{await fn();re()});
-  const sn=h('input',{value:d.settings.name,'aria-label':'Group name'}),sd=h('input',{value:d.settings.date,placeholder:'Date, e.g. 25 Dec 2026','aria-label':'Date'}),sb=h('input',{value:d.settings.budget,placeholder:'Budget, e.g. \u20B91,000','aria-label':'Budget'});
+  const sn=h('input',{value:d.settings.name,'aria-label':'Group name'}),sd=h('input',{value:d.settings.date,placeholder:'Date, e.g. 25 Dec 2026','aria-label':'Date'}),sb=h('input',{value:d.settings.budget,placeholder:'Budget, e.g. ₹1,000','aria-label':'Budget'});
   const mn=h('input',{placeholder:'Participant name','aria-label':'Participant name'});
   const opts=ph=>[h('option',{value:''},ph),...d.members.map(m=>h('option',{value:m.id},m.name))];
   const eg=h('select',{'aria-label':'Giver'},opts('Giver')),er=h('select',{'aria-label':'Cannot draw'},opts('Cannot draw')),eb=h('input',{type:'checkbox',id:'both',checked:''});
-  app.replaceChildren(
-    h('div',{class:'card'},h('h1',{},'Organiser'),h('p',{class:'mute'},'Participant link: '+location.origin+'/'),err),
-    h('div',{class:'card'},h('h2',{},'Event details'),h('div',{class:'row'},sn,sd,sb,h('button',{onclick:a(()=>api('admin/settings',{body:{name:sn.value,date:sd.value,budget:sb.value}}))},'Save'))),
-    h('div',{class:'card'},h('h2',{},'Participants ('+d.members.length+')'),
-      ...d.members.map(m=>h('div',{class:'pill'},m.name,d.drawn?null:h('button',{class:'x','aria-label':'Remove '+m.name,onclick:a(()=>api('admin/members/'+m.id,{method:'DELETE'}))},'×'))),
-      d.drawn?null:h('div',{class:'row'},mn,h('button',{onclick:a(()=>api('admin/members',{body:{name:mn.value}}))},'Add'))),
-    h('div',{class:'card'},h('h2',{},'Exclusions (only you can see these)'),
-      ...d.exclusions.map(x=>h('div',{class:'pill'},nm[x.giver]+' can\u2019t draw '+nm[x.receiver],h('button',{class:'x','aria-label':'Remove exclusion',onclick:a(()=>api('admin/exclusions/'+x.giver+'/'+x.receiver,{method:'DELETE'}))},'×'))),
-      d.drawn?null:h('div',{class:'row'},eg,er,h('label',{class:'chk'},eb,'Both ways'),h('button',{onclick:a(()=>api('admin/exclusions',{body:{giver:eg.value,receiver:er.value,both:eb.checked}}))},'Add'))),
-    h('div',{class:'card'},h('h2',{},'Draw names'),
-      d.drawn?h('div',{},h('p',{},'Names are drawn and locked. Participants can now reveal who they drew.'),h('button',{class:'danger',onclick:a(async()=>{if(confirm('This erases the current draw for everyone. Continue?'))await api('admin/reset',{method:'POST',body:{}})})},'Reset draw'))
-        :h('div',{},h('p',{class:'mute'},'You won\u2019t see who drew whom, so you can play too.'),h('button',{onclick:a(()=>api('admin/draw',{body:{}}))},'Draw names'))));
+  const sec=(...c)=>h('div',{class:'card card-pad stack gap-16'},...c);
+  app.replaceChildren(shell(
+    h('div',{class:'stack gap-24'},
+      h('div',{},h('h1',{},'Organiser'),h('p',{class:'lede',style:'word-break:break-all'},'Participant link: '+location.origin+'/'),err),
+      sec(h('h2',{},'Event details'),h('div',{class:'stack gap-8'},field(sn),field(sd),field(sb),h('div',{},btn('Save',a(()=>api('admin/settings',{body:{name:sn.value,date:sd.value,budget:sb.value}})),'sm')))),
+      sec(h('h2',{},'Participants ('+d.members.length+')'),
+        h('div',{class:'stack gap-8'},d.members.map(m=>h('div',{class:'pill'},m.name,d.drawn?null:h('button',{class:'x','aria-label':'Remove '+m.name,onclick:a(()=>api('admin/members/'+m.id,{method:'DELETE'}))},'×')))),
+        d.drawn?null:h('div',{class:'row'},field(mn),btn('Add',a(()=>api('admin/members',{body:{name:mn.value}})),'sm'))),
+      sec(h('h2',{},'Exclusions (only you can see these)'),
+        h('div',{class:'stack gap-8'},d.exclusions.map(x=>h('div',{class:'pill'},nm[x.giver]+' can’t draw '+nm[x.receiver],h('button',{class:'x','aria-label':'Remove exclusion',onclick:a(()=>api('admin/exclusions/'+x.giver+'/'+x.receiver,{method:'DELETE'}))},'×')))),
+        d.drawn?null:h('div',{class:'row'},field(eg),field(er),h('label',{class:'chk'},eb,'Both ways'),btn('Add',a(()=>api('admin/exclusions',{body:{giver:eg.value,receiver:er.value,both:eb.checked}})),'sm'))),
+      sec(h('h2',{},'Draw names'),
+        d.drawn?[h('p',{class:'mute',style:'margin:0'},'Names are drawn and locked. Participants can now reveal who they drew.'),
+            btn('Reset draw',a(async()=>{if(confirm('This erases the current draw for everyone. Continue?'))await api('admin/reset',{method:'POST',body:{}})}),'sm danger')]
+          :[h('p',{class:'mute',style:'margin:0'},'You won’t see who drew whom, so you can play too.'),
+            btn('Draw names',a(()=>api('admin/draw',{body:{}})))]))));
 }
 location.hash==='#admin'?admin():participant();
 window.addEventListener('hashchange',()=>location.reload());
