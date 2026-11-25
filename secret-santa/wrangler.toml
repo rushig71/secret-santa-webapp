@@ -10,4 +10,5 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "santa"
+# database_id = "c73cb9ec-2aa3-4097-8ada-d695374851ab"
 database_id = "local-placeholder"
