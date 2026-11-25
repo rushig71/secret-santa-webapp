@@ -1,194 +1,993 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- Browser tab icon -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<!-- Makes the page fit phone screens properly -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Secret Santa</title>
+
+<!-- Google Fonts: Emilys Candy (the match name), Fraunces (headings, buttons), Inter (body text) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Emilys+Candy&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-:root{--red:#c60b00;--ink:#000;--body:#2d2d2d;--green:#146827;--page:#f1f1f1;--field:rgba(241,241,241,.67)}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--page);color:var(--ink)}
-body{font-family:Inter,system-ui,sans-serif;font-weight:500;font-size:16px;line-height:1.4}
-button,input,select{font:inherit;color:inherit}button{cursor:pointer}
-#app{max-width:360px;margin:0 auto;min-height:100dvh}
-#app.admin{max-width:520px}
-.screen{position:relative;min-height:100dvh;padding:54px 16px 32px;overflow:hidden}
-.screen.welcome{padding-top:106px}
-.screen.hub{padding-bottom:170px}
-h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:32px;line-height:1.4;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 32}
-h2{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:22px;line-height:1.4;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 22}
-.lede{margin:8px 0 0;color:var(--body)}
-.stack{display:flex;flex-direction:column}
-.gap-29{gap:29px}.gap-24{gap:24px}.gap-16{gap:16px}.gap-8{gap:8px}
-.title-narrow{max-width:233px}
-.card{background:#fff;border-radius:12px}.card-pad{padding:12px}
-.field{display:flex;align-items:center;background:var(--field);border-radius:12px;padding:12px;border:1px solid #e3e3e3}
-.field input,.field select{width:100%;border:0;background:transparent;padding:0;outline:none;font-weight:500;line-height:1.4}
-.field input::placeholder{color:#555;opacity:1}
-.btn{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:64px;padding:20px 44px;border:0;border-radius:16px;background:var(--red);color:#fff;overflow:hidden;font-family:Fraunces,serif;font-weight:600;font-size:26px;letter-spacing:-.52px;line-height:normal;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 26}
-.btn span{white-space:nowrap}
-.btn .flake{position:absolute;top:0;pointer-events:none}.btn .flake-l{left:0}.btn .flake-r{right:0}
-.btn.sm{width:auto;height:46px;padding:8px 20px;font-size:18px;letter-spacing:-.2px;border-radius:12px;flex:none}
-.btn.alt{background:#fff;color:var(--red);border:2px solid var(--red)}
-.btn.danger{background:#7a0600}
-.add{width:100%;border:2px solid #ed372c;border-radius:12px;background:transparent;color:#ed372c;padding:12px 24px;font-family:Fraunces,serif;font-weight:400;font-size:16px;letter-spacing:-.32px;text-align:center;box-shadow:0 0 5px rgba(237,55,44,.5),inset 0 0 5px 1px #ed372c;text-shadow:0 0 2px rgba(237,55,44,.6);font-variation-settings:"SOFT" 0,"WONK" 1}
-.headline-row{display:flex;gap:29px;align-items:stretch}.headline-row h1{flex:1;min-width:0}
-.info{display:flex;gap:12px;align-items:stretch;margin-top:24px}.info .cap{flex:1}
-.date-badge,.cap{position:relative;overflow:hidden;border:2px solid var(--red);border-radius:12px;background:#fff}
-.date-badge{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:86px;padding:22px 12px 12px;background:rgba(255,255,255,.67)}
-.date-badge p{margin:0;font-family:Fraunces,serif;font-variation-settings:"SOFT" 0,"WONK" 1}
-.date-badge .month{font-weight:600;font-size:12px}.date-badge .day{font-weight:700;font-size:24px}
-.cap{padding:22px 14px 20px}.cap p{margin:0;font-weight:400}
-.lights{position:absolute;top:-2px;height:20px;overflow:hidden;pointer-events:none}.lights img{display:block}
-.lights-badge{width:274px;left:calc(50% + 57px);transform:translateX(-50%)}
-.lights-banner{width:340px;left:calc(50% - 6px);transform:translateX(-50%)}
-.match{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px}
-.match-kicker{margin:0;width:100%;text-align:center;font-size:16px;font-weight:400;color:var(--green)}
-.match-name{margin:0;width:100%;text-align:center;font-family:"Emilys Candy",serif;font-weight:400;font-size:56px;line-height:1.4}
-.waiting{display:flex;flex-direction:column;gap:8px;padding:24px 16px}
-.waiting-title{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:22px;font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 22}
-.waiting-copy{margin:0;color:var(--body)}
-.art{position:relative;overflow:hidden;pointer-events:none}.art img{position:absolute;max-width:none}
-.santa{width:100%;height:300px}.santa img{height:106.31%;width:106.66%;left:-4.14%;top:-4%}
-.deco{position:absolute;pointer-events:none}
-.wreath{width:155px;height:153px}.wreath img{height:106.67%;width:157.75%;left:-28.17%;top:-4.05%}
-.wreath.date{left:224px;top:-13px}
-.mistletoe{width:112px;height:153px;left:232px;top:0}.mistletoe img{height:109.17%;width:223.58%;left:-62.15%;top:0}
-.ornament{width:97px;height:145px;left:247px;top:0}.ornament img{height:113.24%;width:253.6%;left:-80.83%;top:-4.27%}
-.gift{width:110px;height:160px}.gift img{height:104.62%;width:166.92%;left:-32.95%;top:-1.48%}
-.snowman{width:133px;height:153px;left:235px;top:3px}.snowman img{height:109.05%;width:187.78%;left:-43.52%;top:-5.64%}
-.wreath-bottom{position:absolute;left:50%;bottom:-62px;width:173px;height:171px;transform:translateX(-50%)}
-.wreath-bottom img{height:106.67%;width:157.75%;left:-28.17%;top:-4.05%}
-.deco.corner{left:auto;right:-6px;top:-18px;transform:scale(.65);transform-origin:top right}
-.block{position:relative}.block>h2{padding-right:84px;min-height:72px}
-.pill{background:#f6f6f6;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center;word-break:break-word}
-.pill.answer{background:#e5f2e8}
-.pill a{color:#000}
-.x{flex:none;width:32px;height:32px;padding:0;border:0;background:transparent;color:#000;font-size:22px;line-height:1}
-.link{background:none;border:0;padding:0;color:var(--red);text-decoration:underline}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row .field{flex:1;min-width:130px}
-.chk{display:flex;gap:6px;align-items:center}
-.err{color:var(--red);font-weight:500;min-height:1.3em}.err:empty{display:none}
-.mute{color:var(--body)}
-:focus-visible{outline:2px solid #111;outline-offset:3px}
+/* Colour palette used across the whole page */
+:root {
+  --red: #c60b00;
+  --ink: #000;
+  --body: #2d2d2d;
+  --green: #146827;
+  --page: #f1f1f1;
+  --field: rgba(241,241,241,.67);
+}
+
+/* Basic page setup: sizing, background, text and fonts */
+* {
+  box-sizing: border-box;
+}
+html,body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+}
+body {
+  font-family: Inter,system-ui,sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.4;
+}
+button,input,select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+
+/* Page column: narrow and centred (wider for the organiser page) */
+#app {
+  max-width: 360px;
+  margin: 0 auto;
+  min-height: 100dvh;
+}
+#app.admin {
+  max-width: 520px;
+}
+
+/* One "screen" = a full-height page area that decorations can be positioned inside */
+.screen {
+  position: relative;
+  min-height: 100dvh;
+  padding: 54px 16px 32px;
+  overflow: hidden;
+}
+.screen.welcome {
+  padding-top: 106px;
+}
+.screen.hub {
+  padding-bottom: 170px;
+}
+
+/* Headings and text styles */
+h1 {
+  margin: 0;
+  font-family: Fraunces,serif;
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1.4;
+  font-variation-settings: "SOFT" 0,"WONK" 1,"opsz" 32;
+}
+h2 {
+  margin: 0;
+  font-family: Fraunces,serif;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.4;
+  font-variation-settings: "SOFT" 0,"WONK" 1,"opsz" 22;
+}
+.lede {
+  margin: 8px 0 0;
+  color: var(--body);
+}
+
+/* Layout helpers: vertical stacks and the gaps between items */
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+.gap-29 {
+  gap: 29px;
+}
+.gap-24 {
+  gap: 24px;
+}
+.gap-16 {
+  gap: 16px;
+}
+.gap-8 {
+  gap: 8px;
+}
+
+/* Narrow title so it does not run under the wreath */
+.title-narrow {
+  max-width: 233px;
+}
+
+/* White rounded cards */
+.card {
+  background: #fff;
+  border-radius: 12px;
+}
+.card-pad {
+  padding: 12px;
+}
+
+/* Form fields (text boxes and dropdowns) */
+.field {
+  display: flex;
+  align-items: center;
+  background: var(--field);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e3e3e3;
+}
+.field input,.field select {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  outline: none;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.field input::placeholder {
+  color: #555;
+  opacity: 1;
+}
+
+/* Big red buttons (with snowflake decorations), plus small, outlined and dark variants */
+.btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 64px;
+  padding: 20px 44px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--red);
+  color: #fff;
+  overflow: hidden;
+  font-family: Fraunces,serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -.52px;
+  line-height: normal;
+  font-variation-settings: "SOFT" 0,"WONK" 1,"opsz" 26;
+}
+.btn span {
+  white-space: nowrap;
+}
+.btn .flake {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+.btn .flake-l {
+  left: 0;
+}
+.btn .flake-r {
+  right: 0;
+}
+.btn.sm {
+  width: auto;
+  height: 46px;
+  padding: 8px 20px;
+  font-size: 18px;
+  letter-spacing: -.2px;
+  border-radius: 12px;
+  flex: none;
+}
+.btn.alt {
+  background: #fff;
+  color: var(--red);
+  border: 2px solid var(--red);
+}
+.btn.danger {
+  background: #7a0600;
+}
+
+/* Outlined glowing "Add to wish list" button */
+.add {
+  width: 100%;
+  border: 2px solid #ed372c;
+  border-radius: 12px;
+  background: transparent;
+  color: #ed372c;
+  padding: 12px 24px;
+  font-family: Fraunces,serif;
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: -.32px;
+  text-align: center;
+  box-shadow: 0 0 5px rgba(237,55,44,.5),inset 0 0 5px 1px #ed372c;
+  text-shadow: 0 0 2px rgba(237,55,44,.6);
+  font-variation-settings: "SOFT" 0,"WONK" 1;
+}
+
+/* Title row with the date badge, and the date + price row */
+.headline-row {
+  display: flex;
+  gap: 29px;
+  align-items: stretch;
+}
+.headline-row h1 {
+  flex: 1;
+  min-width: 0;
+}
+.info {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 24px;
+}
+.info .cap {
+  flex: 1;
+}
+
+/* Date badge and price-cap banner (red border, string lights on top) */
+.date-badge,.cap {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--red);
+  border-radius: 12px;
+  background: #fff;
+}
+.date-badge {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 86px;
+  padding: 22px 12px 12px;
+  background: rgba(255,255,255,.67);
+}
+.date-badge p {
+  margin: 0;
+  font-family: Fraunces,serif;
+  font-variation-settings: "SOFT" 0,"WONK" 1;
+}
+.date-badge .month {
+  font-weight: 600;
+  font-size: 12px;
+}
+.date-badge .day {
+  font-weight: 700;
+  font-size: 24px;
+}
+.cap {
+  padding: 22px 14px 20px;
+}
+.cap p {
+  margin: 0;
+  font-weight: 400;
+}
+
+/* String lights drawn across the top of the badge and banner */
+.lights {
+  position: absolute;
+  top: -2px;
+  height: 20px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lights img {
+  display: block;
+}
+.lights-badge {
+  width: 274px;
+  left: calc(50% + 57px);
+  transform: translateX(-50%);
+}
+.lights-banner {
+  width: 340px;
+  left: calc(50% - 6px);
+  transform: translateX(-50%);
+}
+
+/* "Your Christmas Match" card */
+.match {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+}
+.match-kicker {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--green);
+}
+.match-name {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-family: "Emilys Candy",serif;
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1.4;
+}
+
+/* "Waiting" / "no one here yet" message cards */
+.waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 16px;
+}
+.waiting-title {
+  margin: 0;
+  font-family: Fraunces,serif;
+  font-weight: 600;
+  font-size: 22px;
+  font-variation-settings: "SOFT" 0,"WONK" 1,"opsz" 22;
+}
+.waiting-copy {
+  margin: 0;
+  color: var(--body);
+}
+
+/* Decorative pictures: each class below crops and positions one image */
+.art {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+}
+.art img {
+  position: absolute;
+  max-width: none;
+}
+.santa {
+  width: 100%;
+  height: 300px;
+}
+.santa img {
+  height: 106.31%;
+  width: 106.66%;
+  left: -4.14%;
+  top: -4%;
+}
+.deco {
+  position: absolute;
+  pointer-events: none;
+}
+.wreath {
+  width: 155px;
+  height: 153px;
+}
+.wreath img {
+  height: 106.67%;
+  width: 157.75%;
+  left: -28.17%;
+  top: -4.05%;
+}
+.wreath.date {
+  left: 224px;
+  top: -13px;
+}
+.mistletoe {
+  width: 112px;
+  height: 153px;
+  left: 232px;
+  top: 0;
+}
+.mistletoe img {
+  height: 109.17%;
+  width: 223.58%;
+  left: -62.15%;
+  top: 0;
+}
+.ornament {
+  width: 97px;
+  height: 145px;
+  left: 247px;
+  top: 0;
+}
+.ornament img {
+  height: 113.24%;
+  width: 253.6%;
+  left: -80.83%;
+  top: -4.27%;
+}
+.gift {
+  width: 110px;
+  height: 160px;
+}
+.gift img {
+  height: 104.62%;
+  width: 166.92%;
+  left: -32.95%;
+  top: -1.48%;
+}
+.snowman {
+  width: 133px;
+  height: 153px;
+  left: 235px;
+  top: 3px;
+}
+.snowman img {
+  height: 109.05%;
+  width: 187.78%;
+  left: -43.52%;
+  top: -5.64%;
+}
+.wreath-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: -62px;
+  width: 173px;
+  height: 171px;
+  transform: translateX(-50%);
+}
+.wreath-bottom img {
+  height: 106.67%;
+  width: 157.75%;
+  left: -28.17%;
+  top: -4.05%;
+}
+
+/* Small version of a decoration tucked into the top-right corner of a section */
+.deco.corner {
+  left: auto;
+  right: -6px;
+  top: -18px;
+  transform: scale(.65);
+  transform-origin: top right;
+}
+
+/* Sections that hold a heading plus a corner decoration */
+.block {
+  position: relative;
+}
+.block>h2 {
+  padding-right: 84px;
+  min-height: 72px;
+}
+
+/* List rows (wish items, participants, exclusions) and the small × buttons */
+.pill {
+  background: #f6f6f6;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  word-break: break-word;
+}
+.pill.answer {
+  background: #e5f2e8;
+}
+.pill a {
+  color: #000;
+}
+.x {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #000;
+  font-size: 22px;
+  line-height: 1;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--red);
+  text-decoration: underline;
+}
+
+/* Rows of form controls that wrap on small screens */
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.row .field {
+  flex: 1;
+  min-width: 130px;
+}
+.chk {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Error and helper text */
+.err {
+  color: var(--red);
+  font-weight: 500;
+  min-height: 1.3em;
+}
+.err:empty {
+  display: none;
+}
+.mute {
+  color: var(--body);
+}
+
+/* Visible outline for keyboard navigation */
+:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 3px;
+}
 </style>
 </head>
-<body><main id="app">Loading…</main>
+<body>
+<!-- Everything on the page is drawn into this one element by the script below -->
+<main id="app">Loading…</main>
 <script>
-const app=document.getElementById('app'),A='/assets/';
-const h=(t,a={},...c)=>{const e=document.createElement(t);for(const k in a){k.startsWith('on')?e.addEventListener(k.slice(2),a[k]):k==='class'?e.className=a[k]:e.setAttribute(k,a[k])}e.append(...c.flat().filter(x=>x!=null&&x!==false));return e};
-async function api(path,o={}){
-  const k=localStorage.adminKey;
-  const r=await fetch('/api/'+path,{method:o.method||(o.body?'POST':'GET'),
-    headers:{'content-type':'application/json',...(k?{'x-admin-key':k}:{})},body:o.body?JSON.stringify(o.body):undefined});
-  const d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
-const safeLink=u=>/^https?:\/\//i.test(u||'');
-const err=h('div',{class:'err',role:'alert'});
-const guard=fn=>async(...a)=>{err.textContent='';try{await fn(...a)}catch(e){err.textContent=e.message}};
+// =====================================================================
+// SMALL HELPERS
+// =====================================================================
 
-// ---------- shared look ----------
-const art=(cls,src)=>h('div',{class:'art '+cls,'aria-hidden':'true'},h('img',{src:A+src,alt:''}));
-const lights=k=>h('div',{class:'lights lights-'+k,'aria-hidden':'true'},h('img',{src:A+'lights-'+k+'.svg',alt:''}));
-const btn=(label,onclick,x='')=>{const sm=x.includes('sm');return h('button',{class:'btn '+x,type:'button',onclick},
-  sm?null:h('img',{class:'flake flake-l',src:A+'snow-left.svg',alt:''}),h('span',{},label),sm?null:h('img',{class:'flake flake-r',src:A+'snow-right.svg',alt:''}))};
-const field=el=>h('label',{class:'field'},el);
-function formatDate(raw){
-  const fallback={month:'Dec',day:'25th'};
-  if(!String(raw||'').trim())return fallback;
-  const parsed=new Date(raw),date=Number.isNaN(parsed.getTime())?null:parsed;
-  const match=String(raw).match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+([A-Za-z]+))?|([A-Za-z]+)\s+(\d{1,2})/);
-  let dayNum,monthIndex;
-  if(date&&/[A-Za-z]/.test(raw)||(date&&/^\d{4}-\d{2}-\d{2}/.test(raw))){dayNum=date.getDate();monthIndex=date.getMonth()}
-  else if(match){
-    const ms=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-    monthIndex=ms.indexOf((match[2]||match[3]||'').slice(0,3).toLowerCase());dayNum=Number(match[1]||match[4]);
-    if(monthIndex<0)return{month:raw.trim().slice(0,3),day:''}}
-  else return{month:raw.trim().slice(0,8),day:''};
-  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const suf=(dayNum%10===1&&dayNum!==11)?'st':(dayNum%10===2&&dayNum!==12)?'nd':(dayNum%10===3&&dayNum!==13)?'rd':'th';
-  return{month:M[monthIndex]||fallback.month,day:dayNum+suf}}
-const priceText=b=>/^[\d,.\s]+$/.test(b)?'₹'+Number(b.replace(/[^\d.]/g,'')).toLocaleString('en-IN'):b;
-const dateBadge=raw=>{const d=formatDate(raw);return h('div',{class:'date-badge'},lights('badge'),h('p',{class:'month'},d.month),h('p',{class:'day'},d.day))};
-const capNote=b=>h('div',{class:'cap'},lights('banner'),h('p',{},'Host has kept the price cap for this Secret Santa '+priceText(b)));
-const wishItem=(w,del,cls='')=>h('div',{class:'pill '+cls},h('span',{},safeLink(w.url)?h('a',{href:w.url,target:'_blank',rel:'noopener noreferrer'},w.title):w.title),del?h('button',{class:'x','aria-label':'Remove '+w.title,onclick:()=>del(w)},'×'):null);
+// "app" is the single container the whole page is drawn into.
+// "A" is the folder that holds the images.
+const app = document.getElementById('app'),
+      A = '/assets/';
 
-// ---------- participant page ----------
-async function participant(){
-  app.className='';
-  const pub=await api('public'),me=+localStorage.me,who=pub.members.find(m=>m.id===me),s=pub.settings;
-  const hasDate=!!(s.date||'').trim(),hasBudget=!!(s.budget||'').trim();
-  if(!who){
-    const sel=h('select',{'aria-label':'Your name'},h('option',{value:''},'Choose your name'),pub.members.map(m=>h('option',{value:m.id},m.name)));
-    app.replaceChildren(h('section',{class:'screen welcome'},h('div',{class:'stack gap-29'},
-      art('santa','santa.webp'),
-      h('div',{class:'headline-row'},h('h1',{},s.name),hasDate?dateBadge(s.date):null),
-      pub.members.length
-        ?[h('div',{class:'card card-pad stack gap-16'},h('h2',{},'Who are you?'),field(sel)),
-          btn('Let’s Go',()=>{if(sel.value){localStorage.me=sel.value;participant()}})]
-        :h('div',{class:'card waiting'},h('p',{class:'waiting-title'},'No one here yet'),h('p',{class:'waiting-copy'},'The organiser hasn’t added anyone yet. Check back soon.')),
-      hasBudget?capNote(s.budget):null)));
-    return}
-  const wl=h('div',{class:'stack gap-8'});
-  const loadWishes=async()=>{const w=await api('wishes/'+me);wl.replaceChildren(...(w.length
-    ?w.map(x=>wishItem(x,guard(async x=>{await api('wishes/'+x.id+'?member='+me,{method:'DELETE'});loadWishes()})))
-    :[h('p',{class:'waiting-copy'},'Add a few ideas so your Secret Santa knows what you’d like.')]))};
-  const t=h('input',{placeholder:'Gift idea','aria-label':'Gift idea'}),l=h('input',{placeholder:'Link (optional)','aria-label':'Link',inputmode:'url'});
-  const add=guard(async()=>{await api('wishes',{body:{memberId:me,title:t.value,url:l.value}});t.value=l.value='';loadWishes()});
-  const match=h('div',{class:'stack gap-24'});
-  const gift=(inner)=>h('div',{class:'card match'},art('gift','gift.webp'),h('div',{class:'stack',style:'width:100%'},h('p',{class:'match-kicker'},'Your Christmas Match'),inner));
-  const reveal=guard(async()=>{
-    const a=await api('assignment/'+me);
-    match.replaceChildren(gift(h('p',{class:'match-name'},a.name)),
-      h('section',{class:'block'},art('deco snowman corner','snowman.webp'),h('h2',{},a.name+'’s wish list'),
-        h('div',{class:'stack gap-8'},a.wishes.length?a.wishes.map(w=>wishItem(w,null,'answer')):h('p',{class:'waiting-copy'},'They haven’t added any gifts yet. Check back later.'))))});
-  if(pub.drawn)match.append(gift(btn('Reveal who I drew',reveal)));
-  else match.append(h('div',{class:'card waiting'},h('p',{class:'waiting-title'},'Names haven’t been drawn yet'),h('p',{class:'waiting-copy'},'Add your wish list while you wait. You’ll see who you drew here once the organiser draws names.')));
-  app.replaceChildren(h('section',{class:'screen hub'},
-    art('deco wreath date','wreath.webp'),
-    h('h1',{class:'title-narrow'},s.name),
-    h('p',{class:'lede'},'Hi '+who.name+'! ',h('button',{class:'link',onclick:()=>{delete localStorage.me;participant()}},'Not you?')),
-    hasDate||hasBudget?h('div',{class:'info'},hasDate?dateBadge(s.date):null,hasBudget?capNote(s.budget):null):null,
-    h('div',{class:'stack gap-24',style:'margin-top:24px'},err,match,
-      h('section',{class:'block'},art('deco mistletoe corner','mistletoe.webp'),h('h2',{},'My wish list'),
-        h('div',{class:'stack gap-16'},wl,h('div',{class:'stack gap-8'},field(t),field(l),h('button',{class:'add',type:'button',onclick:add},'Add to wish list'))))),
-    art('wreath-bottom','wreath.webp')));
-  loadWishes()}
+// h = "build an HTML element". Example: h('div', { class: 'card' }, 'Hello')
+//   t = tag name, a = attributes/handlers, c = children (text or other elements).
+// Attributes starting with "on" become event listeners (onclick -> click),
+// "class" sets the CSS class, anything else becomes a normal attribute.
+// null/undefined/false children are skipped, and nested lists are flattened.
+const h = (t, a = {}, ...c) => {
+  const e = document.createElement(t);
+  for (const k in a) {
+    k.startsWith('on')
+      ? e.addEventListener(k.slice(2), a[k])
+      : k === 'class'
+        ? e.className = a[k]
+        : e.setAttribute(k, a[k])
+  }
+  e.append(...c.flat().filter(x => x != null && x !== false));
+  return e
+};
 
-// ---------- organiser page ----------
-async function admin(){
-  app.className='admin';
-  const shell=(...c)=>h('section',{class:'screen'},art('deco ornament corner','ornament.webp'),...c);
-  if(!localStorage.adminKey){
-    const k=h('input',{type:'password',placeholder:'Admin password','aria-label':'Admin password'});
-    app.replaceChildren(shell(h('h1',{},'Organiser login'),h('div',{class:'card card-pad stack gap-16',style:'margin-top:24px'},
-      field(k),btn('Log in',()=>{localStorage.adminKey=k.value;admin()},'sm'),err)));return}
-  let d;try{d=await api('admin')}catch(e){delete localStorage.adminKey;err.textContent=e.message;return admin()}
-  const nm=Object.fromEntries(d.members.map(m=>[m.id,m.name])),re=()=>admin();
-  const a=fn=>guard(async()=>{await fn();re()});
-  const sn=h('input',{value:d.settings.name,'aria-label':'Group name'}),sd=h('input',{value:d.settings.date,placeholder:'Date, e.g. 25 Dec 2026','aria-label':'Date'}),sb=h('input',{value:d.settings.budget,placeholder:'Budget, e.g. ₹1,000','aria-label':'Budget'});
-  const mn=h('input',{placeholder:'Participant name','aria-label':'Participant name'});
-  const opts=ph=>[h('option',{value:''},ph),...d.members.map(m=>h('option',{value:m.id},m.name))];
-  const eg=h('select',{'aria-label':'Giver'},opts('Giver')),er=h('select',{'aria-label':'Cannot draw'},opts('Cannot draw')),eb=h('input',{type:'checkbox',id:'both',checked:''});
-  const sec=(...c)=>h('div',{class:'card card-pad stack gap-16'},...c);
-  app.replaceChildren(shell(
-    h('div',{class:'stack gap-24'},
-      h('div',{},h('h1',{},'Organiser'),h('p',{class:'lede',style:'word-break:break-all'},'Participant link: '+location.origin+'/'),err),
-      sec(h('h2',{},'Event details'),h('div',{class:'stack gap-8'},field(sn),field(sd),field(sb),h('div',{},btn('Save',a(()=>api('admin/settings',{body:{name:sn.value,date:sd.value,budget:sb.value}})),'sm')))),
-      sec(h('h2',{},'Participants ('+d.members.length+')'),
-        h('div',{class:'stack gap-8'},d.members.map(m=>h('div',{class:'pill'},m.name,d.drawn?null:h('button',{class:'x','aria-label':'Remove '+m.name,onclick:a(()=>api('admin/members/'+m.id,{method:'DELETE'}))},'×')))),
-        d.drawn?null:h('div',{class:'row'},field(mn),btn('Add',a(()=>api('admin/members',{body:{name:mn.value}})),'sm'))),
-      sec(h('h2',{},'Exclusions (only you can see these)'),
-        h('div',{class:'stack gap-8'},d.exclusions.map(x=>h('div',{class:'pill'},nm[x.giver]+' can’t draw '+nm[x.receiver],h('button',{class:'x','aria-label':'Remove exclusion',onclick:a(()=>api('admin/exclusions/'+x.giver+'/'+x.receiver,{method:'DELETE'}))},'×')))),
-        d.drawn?null:h('div',{class:'row'},field(eg),field(er),h('label',{class:'chk'},eb,'Both ways'),btn('Add',a(()=>api('admin/exclusions',{body:{giver:eg.value,receiver:er.value,both:eb.checked}})),'sm'))),
-      sec(h('h2',{},'Draw names'),
-        d.drawn?[h('p',{class:'mute',style:'margin:0'},'Names are drawn and locked. Participants can now reveal who they drew.'),
-            btn('Reset draw',a(async()=>{if(confirm('This erases the current draw for everyone. Continue?'))await api('admin/reset',{method:'POST',body:{}})}),'sm danger')]
-          :[h('p',{class:'mute',style:'margin:0'},'You won’t see who drew whom, so you can play too.'),
-            btn('Draw names',a(()=>api('admin/draw',{body:{}})))]))));
+// api = talk to the backend. Sends the saved admin password (if any) with every call.
+//   path = what comes after /api/, o = options (method, body).
+// If the options include a body it is a POST, otherwise a GET unless a method is given.
+// Throws an Error carrying the server's message when the response is not OK.
+async function api(path, o = {}) {
+  const k = localStorage.adminKey;
+  const r = await fetch('/api/' + path, {
+    method: o.method || (o.body ? 'POST' : 'GET'),
+    headers: { 'content-type': 'application/json', ...(k ? { 'x-admin-key': k } : {}) },
+    body: o.body ? JSON.stringify(o.body) : undefined
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Something went wrong');
+  return d
 }
-location.hash==='#admin'?admin():participant();
-window.addEventListener('hashchange',()=>location.reload());
+
+// True only for normal web links (http:// or https://), so a wish link can never run code.
+const safeLink = u => /^https?:\/\//i.test(u || '');
+
+// The red error line shown on the page, and "guard" which wraps an action:
+// it clears the old error first and shows any new error instead of crashing.
+const err = h('div', { class: 'err', role: 'alert' });
+const guard = fn => async (...a) => {
+  err.textContent = '';
+  try { await fn(...a) }
+  catch (e) { err.textContent = e.message }
+};
+
+
+// =====================================================================
+// SHARED LOOK (decorations, buttons, date badge, price banner, wish items)
+// =====================================================================
+
+// A decorative image inside a box. "cls" picks which crop/position CSS to use.
+const art = (cls, src) => h('div', { class: 'art ' + cls, 'aria-hidden': 'true' }, h('img', { src: A + src, alt: '' }));
+
+// String lights drawn along the top of the date badge ("badge") or the price banner ("banner").
+const lights = k => h('div', { class: 'lights lights-' + k, 'aria-hidden': 'true' }, h('img', { src: A + 'lights-' + k + '.svg', alt: '' }));
+
+// A red button. Big buttons get snowflake decorations on both sides;
+// buttons whose extra classes include "sm" (small) do not.
+const btn = (label, onclick, x = '') => {
+  const sm = x.includes('sm');
+  return h('button', { class: 'btn ' + x, type: 'button', onclick },
+    sm ? null : h('img', { class: 'flake flake-l', src: A + 'snow-left.svg', alt: '' }),
+    h('span', {}, label),
+    sm ? null : h('img', { class: 'flake flake-r', src: A + 'snow-right.svg', alt: '' })
+  )
+};
+
+// Wraps an input or dropdown in the rounded "field" box.
+const field = el => h('label', { class: 'field' }, el);
+
+// Turns the date text typed by the organiser (e.g. "25 December 2026") into
+// { month: 'Dec', day: '25th' } for the date badge. Handles several formats,
+// and falls back to something sensible when it can't understand the text.
+function formatDate(raw) {
+  const fallback = { month: 'Dec', day: '25th' };
+
+  // Empty text: use the fallback.
+  if (!String(raw || '').trim()) return fallback;
+
+  // Try the browser's own date parsing first...
+  const parsed = new Date(raw), date = Number.isNaN(parsed.getTime()) ? null : parsed;
+
+  // ...and also a pattern match for "25 Dec", "25th December" or "Dec 25".
+  const match = String(raw).match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+([A-Za-z]+))?|([A-Za-z]+)\s+(\d{1,2})/);
+  let dayNum, monthIndex;
+
+  if (date && /[A-Za-z]/.test(raw) || (date && /^\d{4}-\d{2}-\d{2}/.test(raw))) {
+    // The browser understood it (text with month names, or a yyyy-mm-dd date).
+    dayNum = date.getDate();
+    monthIndex = date.getMonth()
+  }
+  else if (match) {
+    // Use the pattern match: find the month from its first 3 letters.
+    const ms = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    monthIndex = ms.indexOf((match[2] || match[3] || '').slice(0, 3).toLowerCase());
+    dayNum = Number(match[1] || match[4]);
+    // Unknown month word: just show the first 3 letters of what was typed.
+    if (monthIndex < 0) return { month: raw.trim().slice(0, 3), day: '' }
+  }
+  // Nothing recognisable: show the first 8 characters as the "month".
+  else return { month: raw.trim().slice(0, 8), day: '' };
+
+  const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // English day suffix: 1st, 2nd, 3rd, 4th... (11th, 12th, 13th are special cases).
+  const suf = (dayNum % 10 === 1 && dayNum !== 11) ? 'st'
+            : (dayNum % 10 === 2 && dayNum !== 12) ? 'nd'
+            : (dayNum % 10 === 3 && dayNum !== 13) ? 'rd'
+            : 'th';
+
+  return { month: M[monthIndex] || fallback.month, day: dayNum + suf }
+}
+
+// If the budget is just a number (e.g. "1000"), show it as ₹1,000.
+// If it contains other text (e.g. "₹1,000 per person"), show it as typed.
+const priceText = b => /^[\d,.\s]+$/.test(b) ? '₹' + Number(b.replace(/[^\d.]/g, '')).toLocaleString('en-IN') : b;
+
+// The date badge: month on top, day number below, with string lights.
+const dateBadge = raw => {
+  const d = formatDate(raw);
+  return h('div', { class: 'date-badge' }, lights('badge'), h('p', { class: 'month' }, d.month), h('p', { class: 'day' }, d.day))
+};
+
+// The price-cap banner shown on participant pages.
+const capNote = b => h('div', { class: 'cap' }, lights('banner'), h('p', {}, 'Host has kept the price cap for this Secret Santa ' + priceText(b)));
+
+// One wish list entry. Shows a clickable link if the item has a safe URL.
+// If a "del" function is given, adds a × button that calls it (only for your own list).
+// "cls" adds an extra CSS class (e.g. "answer" for the green style).
+const wishItem = (w, del, cls = '') => h('div', { class: 'pill ' + cls },
+  h('span', {}, safeLink(w.url) ? h('a', { href: w.url, target: '_blank', rel: 'noopener noreferrer' }, w.title) : w.title),
+  del ? h('button', { class: 'x', 'aria-label': 'Remove ' + w.title, onclick: () => del(w) }, '×') : null
+);
+
+
+// =====================================================================
+// PARTICIPANT PAGE (what your friends see at the normal link)
+// =====================================================================
+async function participant() {
+  app.className = '';   // normal narrow column
+
+  // Load the public data: event settings, whether names are drawn, and the list of people.
+  const pub = await api('public'),
+        me = +localStorage.me,                              // id of the person chosen on this device (if any)
+        who = pub.members.find(m => m.id === me),           // that person's record (undefined if none chosen)
+        s = pub.settings;
+
+  // Only show the date badge / price banner if the organiser filled them in.
+  const hasDate = !!(s.date || '').trim(),
+        hasBudget = !!(s.budget || '').trim();
+
+  // ---------- Step 1: nobody chosen yet -> "Who are you?" screen ----------
+  if (!who) {
+    // Dropdown listing everyone in the group.
+    const sel = h('select', { 'aria-label': 'Your name' },
+      h('option', { value: '' }, 'Choose your name'),
+      pub.members.map(m => h('option', { value: m.id }, m.name))
+    );
+
+    app.replaceChildren(
+      h('section', { class: 'screen welcome' },
+        h('div', { class: 'stack gap-29' },
+          art('santa', 'santa.webp'),
+
+          // Event name on the left, date badge on the right.
+          h('div', { class: 'headline-row' },
+            h('h1', {}, s.name),
+            hasDate ? dateBadge(s.date) : null
+          ),
+
+          // If there are participants: the picker card and a button that remembers your choice.
+          // Otherwise: a "no one here yet" message.
+          pub.members.length
+            ? [
+                h('div', { class: 'card card-pad stack gap-16' },
+                  h('h2', {}, 'Who are you?'),
+                  field(sel)
+                ),
+                btn('Let’s Go', () => { if (sel.value) { localStorage.me = sel.value; participant() } })
+              ]
+            : h('div', { class: 'card waiting' },
+                h('p', { class: 'waiting-title' }, 'No one here yet'),
+                h('p', { class: 'waiting-copy' }, 'The organiser hasn’t added anyone yet. Check back soon.')
+              ),
+
+          hasBudget ? capNote(s.budget) : null
+        )
+      )
+    );
+    return
+  }
+
+  // ---------- Step 2: a person is chosen -> their home page ----------
+
+  // Container for your own wish list items, and the function that (re)loads them.
+  const wl = h('div', { class: 'stack gap-8' });
+  const loadWishes = async () => {
+    const w = await api('wishes/' + me);
+    wl.replaceChildren(...(w.length
+      // Each item gets a × button that deletes it and reloads the list.
+      ? w.map(x => wishItem(x, guard(async x => { await api('wishes/' + x.id + '?member=' + me, { method: 'DELETE' }); loadWishes() })))
+      // Empty list: friendly hint.
+      : [h('p', { class: 'waiting-copy' }, 'Add a few ideas so your Secret Santa knows what you’d like.')]))
+  };
+
+  // The two inputs for adding a gift idea (title + optional link), and the "Add" action.
+  const t = h('input', { placeholder: 'Gift idea', 'aria-label': 'Gift idea' }),
+        l = h('input', { placeholder: 'Link (optional)', 'aria-label': 'Link', inputmode: 'url' });
+  const add = guard(async () => {
+    await api('wishes', { body: { memberId: me, title: t.value, url: l.value } });
+    t.value = l.value = '';   // clear both inputs
+    loadWishes()
+  });
+
+  // "match" holds either the waiting message, the reveal button, or the revealed person.
+  const match = h('div', { class: 'stack gap-24' });
+
+  // The white card with the gift box picture and "Your Christmas Match" caption.
+  // "inner" is what goes under the caption (the reveal button or the person's name).
+  const gift = (inner) => h('div', { class: 'card match' },
+    art('gift', 'gift.webp'),
+    h('div', { class: 'stack', style: 'width:100%' },
+      h('p', { class: 'match-kicker' }, 'Your Christmas Match'),
+      inner
+    )
+  );
+
+  // What happens when you press "Reveal who I drew": ask the server, then show the
+  // person's name and their wish list (green boxes, links only, no delete buttons).
+  const reveal = guard(async () => {
+    const a = await api('assignment/' + me);
+    match.replaceChildren(
+      gift(h('p', { class: 'match-name' }, a.name)),
+      h('section', { class: 'block' },
+        art('deco snowman corner', 'snowman.webp'),
+        h('h2', {}, a.name + '’s wish list'),
+        h('div', { class: 'stack gap-8' },
+          a.wishes.length
+            ? a.wishes.map(w => wishItem(w, null, 'answer'))
+            : h('p', { class: 'waiting-copy' }, 'They haven’t added any gifts yet. Check back later.')
+        )
+      )
+    )
+  });
+
+  // Names drawn already -> show the reveal button. Not yet -> show a waiting message.
+  if (pub.drawn) match.append(gift(btn('Reveal who I drew', reveal)));
+  else match.append(h('div', { class: 'card waiting' },
+    h('p', { class: 'waiting-title' }, 'Names haven’t been drawn yet'),
+    h('p', { class: 'waiting-copy' }, 'Add your wish list while you wait. You’ll see who you drew here once the organiser draws names.')
+  ));
+
+  // Put the whole page together.
+  app.replaceChildren(
+    h('section', { class: 'screen hub' },
+      art('deco wreath date', 'wreath.webp'),               // wreath in the top-right corner
+      h('h1', { class: 'title-narrow' }, s.name),           // event name
+
+      // Greeting, with a "Not you?" link that forgets the chosen name on this device.
+      h('p', { class: 'lede' }, 'Hi ' + who.name + '! ',
+        h('button', { class: 'link', onclick: () => { delete localStorage.me; participant() } }, 'Not you?')
+      ),
+
+      // Date badge and price banner side by side (only the ones that are set).
+      hasDate || hasBudget
+        ? h('div', { class: 'info' }, hasDate ? dateBadge(s.date) : null, hasBudget ? capNote(s.budget) : null)
+        : null,
+
+      h('div', { class: 'stack gap-24', style: 'margin-top:24px' },
+        err,      // error messages appear here
+        match,    // waiting message / reveal button / revealed person
+
+        // Your own wish list with the add form.
+        h('section', { class: 'block' },
+          art('deco mistletoe corner', 'mistletoe.webp'),
+          h('h2', {}, 'My wish list'),
+          h('div', { class: 'stack gap-16' },
+            wl,
+            h('div', { class: 'stack gap-8' },
+              field(t),
+              field(l),
+              h('button', { class: 'add', type: 'button', onclick: add }, 'Add to wish list')
+            )
+          )
+        )
+      ),
+
+      art('wreath-bottom', 'wreath.webp')                   // wreath at the bottom of the page
+    )
+  );
+
+  // Fetch and show your wish list.
+  loadWishes()
+}
+
+
+// =====================================================================
+// ORGANISER PAGE (the admin page at /#admin)
+// =====================================================================
+async function admin() {
+  app.className = 'admin';   // slightly wider column for the forms
+
+  // Page wrapper with the bauble decoration in the corner.
+  const shell = (...c) => h('section', { class: 'screen' }, art('deco ornament corner', 'ornament.webp'), ...c);
+
+  // ---------- Not logged in: show the password form ----------
+  if (!localStorage.adminKey) {
+    const k = h('input', { type: 'password', placeholder: 'Admin password', 'aria-label': 'Admin password' });
+    app.replaceChildren(shell(
+      h('h1', {}, 'Organiser login'),
+      h('div', { class: 'card card-pad stack gap-16', style: 'margin-top:24px' },
+        field(k),
+        // Save the password in this browser, then reload the page (it is checked by the server on the next call).
+        btn('Log in', () => { localStorage.adminKey = k.value; admin() }, 'sm'),
+        err
+      )
+    ));
+    return
+  }
+
+  // ---------- Logged in: load everything the organiser needs ----------
+  // If the server rejects the saved password, forget it and show the login form again.
+  let d;
+  try { d = await api('admin') }
+  catch (e) { delete localStorage.adminKey; err.textContent = e.message; return admin() }
+
+  // nm = lookup of participant id -> name. re = reload this page.
+  const nm = Object.fromEntries(d.members.map(m => [m.id, m.name])),
+        re = () => admin();
+
+  // a = wrap an admin action: run it, then reload the page, with errors shown via "guard".
+  const a = fn => guard(async () => { await fn(); re() });
+
+  // Inputs for the event details (pre-filled with the saved values).
+  const sn = h('input', { value: d.settings.name, 'aria-label': 'Group name' }),
+        sd = h('input', { value: d.settings.date, placeholder: 'Date, e.g. 25 Dec 2026', 'aria-label': 'Date' }),
+        sb = h('input', { value: d.settings.budget, placeholder: 'Budget, e.g. ₹1,000', 'aria-label': 'Budget' });
+
+  // Input for adding a participant.
+  const mn = h('input', { placeholder: 'Participant name', 'aria-label': 'Participant name' });
+
+  // Dropdown options: a placeholder followed by every participant.
+  const opts = ph => [h('option', { value: '' }, ph), ...d.members.map(m => h('option', { value: m.id }, m.name))];
+
+  // Exclusion form controls: giver dropdown, "cannot draw" dropdown, and the "both ways" checkbox (ticked by default).
+  const eg = h('select', { 'aria-label': 'Giver' }, opts('Giver')),
+        er = h('select', { 'aria-label': 'Cannot draw' }, opts('Cannot draw')),
+        eb = h('input', { type: 'checkbox', id: 'both', checked: '' });
+
+  // A white card section; its children are passed in.
+  const sec = (...c) => h('div', { class: 'card card-pad stack gap-16' }, ...c);
+
+  app.replaceChildren(shell(
+    h('div', { class: 'stack gap-24' },
+
+      // ----- Title, the link to share with participants, and the error area -----
+      h('div', {},
+        h('h1', {}, 'Organiser'),
+        h('p', { class: 'lede', style: 'word-break:break-all' }, 'Participant link: ' + location.origin + '/'),
+        err
+      ),
+
+      // ----- Event details: name, date, budget, and a Save button -----
+      sec(
+        h('h2', {}, 'Event details'),
+        h('div', { class: 'stack gap-8' },
+          field(sn),
+          field(sd),
+          field(sb),
+          h('div', {},
+            btn('Save', a(() => api('admin/settings', { body: { name: sn.value, date: sd.value, budget: sb.value } })), 'sm')
+          )
+        )
+      ),
+
+      // ----- Participants: list with × buttons (hidden after the draw) and an add form -----
+      sec(
+        h('h2', {}, 'Participants (' + d.members.length + ')'),
+        h('div', { class: 'stack gap-8' },
+          d.members.map(m =>
+            h('div', { class: 'pill' },
+              m.name,
+              d.drawn ? null : h('button', { class: 'x', 'aria-label': 'Remove ' + m.name, onclick: a(() => api('admin/members/' + m.id, { method: 'DELETE' })) }, '×')
+            )
+          )
+        ),
+        d.drawn ? null : h('div', { class: 'row' },
+          field(mn),
+          btn('Add', a(() => api('admin/members', { body: { name: mn.value } })), 'sm')
+        )
+      ),
+
+      // ----- Exclusions: list with × buttons and a form to add "X can't draw Y" -----
+      sec(
+        h('h2', {}, 'Exclusions (only you can see these)'),
+        h('div', { class: 'stack gap-8' },
+          d.exclusions.map(x =>
+            h('div', { class: 'pill' },
+              nm[x.giver] + ' can’t draw ' + nm[x.receiver],
+              h('button', { class: 'x', 'aria-label': 'Remove exclusion', onclick: a(() => api('admin/exclusions/' + x.giver + '/' + x.receiver, { method: 'DELETE' })) }, '×')
+            )
+          )
+        ),
+        d.drawn ? null : h('div', { class: 'row' },
+          field(eg),
+          field(er),
+          h('label', { class: 'chk' }, eb, 'Both ways'),
+          btn('Add', a(() => api('admin/exclusions', { body: { giver: eg.value, receiver: er.value, both: eb.checked } })), 'sm')
+        )
+      ),
+
+      // ----- Draw names / Reset draw -----
+      sec(
+        h('h2', {}, 'Draw names'),
+        d.drawn
+          // Already drawn: explain, and offer a (confirmed) reset.
+          ? [
+              h('p', { class: 'mute', style: 'margin:0' }, 'Names are drawn and locked. Participants can now reveal who they drew.'),
+              btn('Reset draw', a(async () => { if (confirm('This erases the current draw for everyone. Continue?')) await api('admin/reset', { method: 'POST', body: {} }) }), 'sm danger')
+            ]
+          // Not drawn yet: offer the big "Draw names" button.
+          : [
+              h('p', { class: 'mute', style: 'margin:0' }, 'You won’t see who drew whom, so you can play too.'),
+              btn('Draw names', a(() => api('admin/draw', { body: {} })))
+            ]
+      )
+    )
+  ));
+}
+
+
+// =====================================================================
+// START-UP: the page address decides which page to show
+// =====================================================================
+
+// "/#admin" shows the organiser page; anything else shows the participant page.
+location.hash === '#admin' ? admin() : participant();
+
+// If the part after # changes, reload the page so the right view is shown.
+window.addEventListener('hashchange', () => location.reload());
 </script></body></html>
