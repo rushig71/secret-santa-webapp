@@ -39,7 +39,7 @@ body {
   font-size: 16px;
   line-height: 1.4;
 }
-button,input,select {
+button,input,select,textarea {
   font: inherit;
   color: inherit;
 }
@@ -148,7 +148,7 @@ h2 {
   padding: 12px;
   border: 1px solid #e3e3e3;
 }
-.field input,.field select {
+.field input,.field select,.field textarea {
   width: 100%;
   border: 0;
   background: transparent;
@@ -156,6 +156,10 @@ h2 {
   outline: none;
   font-weight: 500;
   line-height: 1.4;
+}
+.field textarea {
+  resize: vertical;
+  min-height: 52px;
 }
 .field input::placeholder {
   color: #555;
@@ -215,7 +219,7 @@ h2 {
   background: #7a0600;
 }
 
-/* Outlined glowing "Add to wish list" button */
+/* Outlined glowing "Save my answers" button */
 .add {
   width: 100%;
   border: 2px solid #ed372c;
@@ -477,13 +481,13 @@ h2 {
   min-height: 72px;
 }
 
-/* Wish list sections are white cards now: the decoration sits on the card's top edge */
+/* The answer sections are white cards: the decoration sits on the card's top edge */
 .card.block .deco.corner {
   right: 6px;
   top: -20px;
 }
 
-/* List rows (wish items, participants, exclusions) and the small × buttons */
+/* List rows (answers, participants, exclusions) and the small × buttons */
 .pill {
   background: #f6f6f6;
   border-radius: 12px;
@@ -499,6 +503,26 @@ h2 {
 }
 .pill a {
   color: #000;
+}
+
+/* Questionnaire: the question above each text box, and the question + answer rows */
+.qa-label {
+  margin: 0;
+}
+.qa {
+  flex: 1;
+  min-width: 0;
+}
+.qa p {
+  margin: 0;
+}
+.qa-q {
+  font-size: 13px;
+  color: var(--body);
+}
+.qa-a {
+  margin-top: 2px;
+  white-space: pre-wrap;
 }
 .x {
   flex: none;
@@ -604,9 +628,6 @@ async function api(path, o = {}) {
   return d
 }
 
-// True only for normal web links (http:// or https://), so a wish link can never run code.
-const safeLink = u => /^https?:\/\//i.test(u || '');
-
 // The red error line shown on the page, and "guard" which wraps an action:
 // it clears the old error first and shows any new error instead of crashing.
 const err = h('div', { class: 'err', role: 'alert' });
@@ -618,7 +639,7 @@ const guard = fn => async (...a) => {
 
 
 // =====================================================================
-// SHARED LOOK (decorations, buttons, date badge, price banner, wish items)
+// SHARED LOOK (decorations, buttons, date badge, price banner, answer rows)
 // =====================================================================
 
 // A decorative image inside a box. "cls" picks which crop/position CSS to use.
@@ -697,12 +718,13 @@ const dateBadge = raw => {
 // The price-cap banner shown on participant pages.
 const capNote = b => h('div', { class: 'cap' }, lights('banner'), h('p', {}, 'Host has kept the price cap for this Secret Santa ' + priceText(b)));
 
-// One wish list entry. Shows a clickable link if the item has a safe URL.
-// If a "del" function is given, adds a × button that calls it (only for your own list).
-// "cls" adds an extra CSS class (e.g. "answer" for the green style).
-const wishItem = (w, del, cls = '') => h('div', { class: 'pill ' + cls },
-  h('span', {}, safeLink(w.url) ? h('a', { href: w.url, target: '_blank', rel: 'noopener noreferrer' }, w.title) : w.title),
-  del ? h('button', { class: 'x', 'aria-label': 'Remove ' + w.title, onclick: () => del(w) }, '×') : null
+// One question + answer row, for the person you drew (same grey list-row style as before).
+// The CSS keeps any line breaks the person typed in their answer.
+const qaItem = (question, answer) => h('div', { class: 'pill' },
+  h('div', { class: 'qa' },
+    h('p', { class: 'qa-q' }, question),
+    h('p', { class: 'qa-a' }, answer)
+  )
 );
 
 
@@ -765,24 +787,28 @@ async function participant() {
 
   // ---------- Step 2: a person is chosen -> their home page ----------
 
-  // Container for your own wish list items, and the function that (re)loads them.
-  const wl = h('div', { class: 'stack gap-8' });
-  const loadWishes = async () => {
-    const w = await api('wishes/' + me);
-    wl.replaceChildren(...(w.length
-      // Each item gets a × button that deletes it and reloads the list.
-      ? w.map(x => wishItem(x, guard(async x => { await api('wishes/' + x.id + '?member=' + me, { method: 'DELETE' }); loadWishes() })))
-      // Empty list: friendly hint.
-      : [h('p', { class: 'waiting-copy' }, 'Add a few ideas so your Secret Santa knows what you’d like.')]))
+  // ---------- Your own answers ----------
+  // The questions come from the server (see QUESTIONS at the top of src/index.js),
+  // so to change a question you only edit it there.
+  const questions = pub.questions;
+
+  // One text box per question, in the same order as the questions.
+  const boxes = questions.map(q => h('textarea', { rows: '2', maxlength: '500', 'aria-label': q }));
+
+  // A line that says "Saved!" after saving (cleared again as soon as you type something).
+  const saved = h('p', { class: 'waiting-copy', role: 'status' });
+  boxes.forEach(b => b.addEventListener('input', () => { saved.textContent = '' }));
+
+  // Fetch your saved answers and fill them into the boxes.
+  const loadAnswers = async () => {
+    const a = await api('answers/' + me);
+    a.forEach(x => { if (boxes[x.q]) boxes[x.q].value = x.answer })
   };
 
-  // The two inputs for adding a gift idea (title + optional link), and the "Add" action.
-  const t = h('input', { placeholder: 'Gift idea', 'aria-label': 'Gift idea' }),
-        l = h('input', { placeholder: 'Link (optional)', 'aria-label': 'Link', inputmode: 'url' });
-  const add = guard(async () => {
-    await api('wishes', { body: { memberId: me, title: t.value, url: l.value } });
-    t.value = l.value = '';   // clear both inputs
-    loadWishes()
+  // Save all the answers in one go.
+  const save = guard(async () => {
+    await api('answers', { body: { memberId: me, answers: boxes.map(b => b.value) } });
+    saved.textContent = 'Saved!'
   });
 
   // "match" holds either the waiting message, the reveal button, or the revealed person.
@@ -803,18 +829,18 @@ async function participant() {
   );
 
   // What happens when you press "Reveal who I drew": ask the server, then show the
-  // person's name and their wish list (green boxes, links only, no delete buttons).
+  // person's name and their answers (grey rows: question in small text, answer below).
   const reveal = guard(async () => {
     const a = await api('assignment/' + me);
     match.replaceChildren(
       gift(h('p', { class: 'match-name' }, a.name)),
       h('section', { class: 'card card-pad block stack gap-16' },
         art('deco snowman corner', 'snowman.webp'),
-        h('h2', {}, a.name + '’s wish list'),
+        h('h2', {}, a.name + '’s answers'),
         h('div', { class: 'stack gap-8' },
-          a.wishes.length
-            ? a.wishes.map(w => wishItem(w, null))
-            : h('p', { class: 'waiting-copy' }, 'They haven’t added any gifts yet. Check back later.')
+          a.answers.length
+            ? a.answers.map(x => qaItem(x.question, x.answer))
+            : h('p', { class: 'waiting-copy' }, 'They haven’t answered the questions yet. Check back later.')
         )
       )
     );
@@ -827,7 +853,7 @@ async function participant() {
   if (pub.drawn) match.append(gift(btn('Reveal who I drew', reveal)));
   else match.append(h('div', { class: 'card waiting' },
     h('p', { class: 'waiting-title' }, 'Names haven’t been drawn yet'),
-    h('p', { class: 'waiting-copy' }, 'Add your wish list while you wait. You’ll see who you drew here once the organiser draws names.')
+    h('p', { class: 'waiting-copy' }, 'Fill in your answers while you wait. You’ll see who you drew here once the organiser draws names.')
   ));
 
   // Put the whole page together.
@@ -851,16 +877,20 @@ async function participant() {
         err,      // error messages appear here
         match,    // waiting message / reveal button / revealed person
 
-        // Your own wish list with the add form.
+        // Your own answers: a labelled box for each question, and a Save button.
         h('section', { class: 'card card-pad block stack gap-16' },
           art('deco mistletoe corner', 'mistletoe.webp'),
-          h('h2', {}, 'My wish list'),
+          h('h2', {}, 'My answers'),
           h('div', { class: 'stack gap-16' },
-            wl,
+            questions.map((q, i) =>
+              h('div', { class: 'stack gap-8' },
+                h('p', { class: 'qa-label' }, (i + 1) + '. ' + q),
+                field(boxes[i])
+              )
+            ),
             h('div', { class: 'stack gap-8' },
-              field(t),
-              field(l),
-              h('button', { class: 'add', type: 'button', onclick: add }, 'Add to wish list')
+              h('button', { class: 'add', type: 'button', onclick: save }, 'Save my answers'),
+              saved
             )
           )
         )
@@ -870,8 +900,8 @@ async function participant() {
     )
   );
 
-  // Fetch and show your wish list.
-  loadWishes()
+  // Fetch and show your saved answers.
+  loadAnswers()
 }
 
 

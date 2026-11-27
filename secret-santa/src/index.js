@@ -41,6 +41,28 @@ const shuffle = a => {
 
 
 // ---------------------------------------------------------------------
+// THE QUESTIONNAIRE  (edit the questions here)
+//
+// This is the ONE place where the questions live. The web page asks the
+// server for this list, so changing a question here and redeploying is all
+// you need to do. Rules of thumb:
+//   * Fixing a typo or rewording a question: just edit the text. Existing
+//     answers are kept and shown under the new wording.
+//   * Adding a question: add it to the END of the list. Existing answers keep working.
+//   * Removing or re-ordering questions: answers are saved by question NUMBER
+//     (position in this list, starting at 0), so old answers would line up with the
+//     wrong questions. Clear the answers first (see README) if you do that.
+// ---------------------------------------------------------------------
+const QUESTIONS = [
+  'What’s something you’ve been unusually obsessed with lately?',
+  'What’s one thing you find yourself reaching for way too often?',
+  'What’s a small, unnecessary purchase that you can never really resist?',
+  'What’s the kind of surprise that would instantly put you in a good mood?',
+  'If your personality had a little theme, would it be cosy, artsy, adventurous, bougie or chaotic?'
+];
+
+
+// ---------------------------------------------------------------------
 // Settings stored in the database
 // ---------------------------------------------------------------------
 
@@ -135,7 +157,7 @@ export default {
       // PARTICIPANT ENDPOINTS (no login needed)
       // =============================================================
 
-      // GET /api/public -> event details, whether names are drawn, and the list of people.
+      // GET /api/public -> event details, whether names are drawn, the questions, and the list of people.
       // Never includes exclusions or who drew whom.
       if (p[0] === 'public' && m === 'GET') {
         const s = await getSettings(db);
@@ -143,11 +165,12 @@ export default {
         return J({
           settings: { name: s.name, date: s.date, budget: s.budget },
           drawn: s.drawn === '1',
+          questions: QUESTIONS,
           members: results
         });
       }
 
-      // GET /api/assignment/<id> -> who person <id> drew, plus that person's wish list.
+      // GET /api/assignment/<id> -> who person <id> drew, plus that person's questionnaire answers.
       if (p[0] === 'assignment' && m === 'GET') {
         // Look up the person asking and who they drew.
         const me = await db.prepare('SELECT drawn_id FROM members WHERE id=?').bind(+p[1]).first();
@@ -158,50 +181,52 @@ export default {
         // Get the drawn person's name...
         const t = await db.prepare('SELECT id,name FROM members WHERE id=?').bind(me.drawn_id).first();
 
-        // ...and their wish list.
-        const { results } = await db.prepare('SELECT id,title,url FROM wishes WHERE member_id=? ORDER BY id').bind(t.id).all();
+        // ...and their saved answers.
+        const { results } = await db.prepare('SELECT q,answer FROM answers WHERE member_id=? ORDER BY q').bind(t.id).all();
 
-        return J({ name: t.name, wishes: results });
+        // Send each answer together with its question text. Answers whose question number
+        // no longer exists in QUESTIONS (e.g. if the list was shortened later) are skipped.
+        return J({
+          name: t.name,
+          answers: results.filter(r => QUESTIONS[r.q]).map(r => ({ question: QUESTIONS[r.q], answer: r.answer }))
+        });
       }
 
-      // Wish list endpoints: /api/wishes/...
-      if (p[0] === 'wishes') {
+      // Questionnaire answer endpoints: /api/answers/...
+      if (p[0] === 'answers') {
 
-        // GET /api/wishes/<memberId> -> that person's wish list.
+        // GET /api/answers/<memberId> -> that person's saved answers, as [{ q, answer }, ...].
+        // "q" is the question number (its position in QUESTIONS, starting at 0).
         if (m === 'GET') {
-          const { results } = await db.prepare('SELECT id,title,url FROM wishes WHERE member_id=? ORDER BY id').bind(+p[1]).all();
+          const { results } = await db.prepare('SELECT q,answer FROM answers WHERE member_id=? ORDER BY q').bind(+p[1]).all();
           return J(results);
         }
 
-        // POST /api/wishes -> add a gift idea to someone's list.
+        // POST /api/answers -> save ALL of one person's answers at once.
+        // The body looks like { memberId: 3, answers: [text for question 0, text for question 1, ...] }.
         if (m === 'POST') {
-          // Clean the inputs: text only, trimmed, and capped in length.
-          const title = String(body.title || '').trim().slice(0, 200),
-                url = String(body.url || '').trim().slice(0, 1000);
+          const memberId = +body.memberId;
 
-          // A title is required.
-          if (!title) return bad('Add a title for the gift.');
+          // The person must exist.
+          const known = await db.prepare('SELECT id FROM members WHERE id=?').bind(memberId).first();
+          if (!known) return bad('Unknown person.');
 
-          // A link is optional, but if given it must be a normal web link.
-          if (url && !/^https?:\/\//i.test(url)) return bad('Links must start with http:// or https://');
+          const given = Array.isArray(body.answers) ? body.answers : [];
 
-          // Limit each wish list to 20 gifts.
-          const c = await db.prepare('SELECT COUNT(*) n FROM wishes WHERE member_id=?').bind(+body.memberId).first();
-          if (c.n >= 20) return bad('Wish lists are limited to 20 gifts.');
+          // Keep only the non-empty answers (trimmed, capped at 500 characters),
+          // numbered by question. Empty boxes simply mean "no answer".
+          const rows = QUESTIONS
+            .map((_, q) => ({ q, text: String(given[q] || '').trim().slice(0, 500) }))
+            .filter(r => r.text);
 
-          // Save it (store an empty link as NULL).
-          await db.prepare('INSERT INTO wishes(member_id,title,url) VALUES(?,?,?)').bind(+body.memberId, title, url || null).run();
-          return J({ ok: true });
-        }
-
-        // DELETE /api/wishes/<wishId>?member=<memberId> -> remove a gift idea.
-        // The member id must match, so you can only delete items from the list you named.
-        if (m === 'DELETE') {
-          await db.prepare('DELETE FROM wishes WHERE id=? AND member_id=?').bind(+p[1], +u.searchParams.get('member')).run();
+          // Replace the person's old answers with the new ones, all in one batch.
+          await db.batch([
+            db.prepare('DELETE FROM answers WHERE member_id=?').bind(memberId),
+            ...rows.map(r => db.prepare('INSERT INTO answers(member_id,q,answer) VALUES(?,?,?)').bind(memberId, r.q, r.text))
+          ]);
           return J({ ok: true });
         }
       }
-
 
       // =============================================================
       // ORGANISER ENDPOINTS (need the admin password)
@@ -254,10 +279,10 @@ export default {
 
           const id = +p[2];
 
-          // Remove the person, their wishes, and any exclusions involving them, in one go.
+          // Remove the person, their answers, and any exclusions involving them, in one go.
           await db.batch([
             db.prepare('DELETE FROM members WHERE id=?').bind(id),
-            db.prepare('DELETE FROM wishes WHERE member_id=?').bind(id),
+            db.prepare('DELETE FROM answers WHERE member_id=?').bind(id),
             db.prepare('DELETE FROM exclusions WHERE giver=? OR receiver=?').bind(id, id)
           ]);
           return J({ ok: true });
