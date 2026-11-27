@@ -612,29 +612,43 @@ const h = (t, a = {}, ...c) => {
   return e
 };
 
-// api = talk to the backend. Sends the saved admin password (if any) with every call.
+// api = talk to the backend. Sends the saved admin password and/or the saved PIN (if any) with every call.
 //   path = what comes after /api/, o = options (method, body).
 // If the options include a body it is a POST, otherwise a GET unless a method is given.
 // Throws an Error carrying the server's message when the response is not OK.
 async function api(path, o = {}) {
-  const k = localStorage.adminKey;
+  const k = localStorage.adminKey, pin = localStorage.pin;
   const r = await fetch('/api/' + path, {
     method: o.method || (o.body ? 'POST' : 'GET'),
-    headers: { 'content-type': 'application/json', ...(k ? { 'x-admin-key': k } : {}) },
+    headers: { 'content-type': 'application/json', ...(k ? { 'x-admin-key': k } : {}), ...(pin ? { 'x-pin': pin } : {}) },
     body: o.body ? JSON.stringify(o.body) : undefined
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'Something went wrong');
+  if (!r.ok) {
+    // Keep the server's short "code" (e.g. 'pin' = wrong or outdated PIN) so callers can react to it.
+    const e = new Error(d.error || 'Something went wrong');
+    e.code = d.code;
+    throw e
+  }
   return d
 }
 
 // The red error line shown on the page, and "guard" which wraps an action:
 // it clears the old error first and shows any new error instead of crashing.
+// If the server says the saved PIN is outdated, it sends the person back to the PIN screen.
 const err = h('div', { class: 'err', role: 'alert' });
 const guard = fn => async (...a) => {
   err.textContent = '';
   try { await fn(...a) }
-  catch (e) { err.textContent = e.message }
+  catch (e) {
+    if (e.code === 'pin' && localStorage.pin) {
+      // The saved PIN is no longer accepted (changed or reset elsewhere): forget it and ask again.
+      delete localStorage.pin;
+      await participant();
+      err.textContent = 'Your PIN has changed. Please enter the new one.'
+    }
+    else err.textContent = e.message
+  }
 };
 
 
@@ -744,13 +758,39 @@ async function participant() {
   const hasDate = !!(s.date || '').trim(),
         hasBudget = !!(s.budget || '').trim();
 
-  // ---------- Step 1: nobody chosen yet -> "Who are you?" screen ----------
-  if (!who) {
-    // Dropdown listing everyone in the group.
+  // ---------- Are we signed in? ----------
+  // Signed in = a person is chosen, their PIN is saved on this device, and the server still accepts it.
+  let signedIn = false, loginMessage = '';
+  if (who && localStorage.pin) {
+    try { await api('login', { body: { memberId: me, pin: localStorage.pin } }); signedIn = true }
+    catch (e) {
+      if (e.code === 'pin') delete localStorage.pin;   // the PIN was changed or reset: forget the old one
+      loginMessage = e.code === 'pin' ? 'Your PIN has changed. Please enter the new one.' : e.message
+    }
+  }
+
+  // ---------- Step 1: not signed in -> "Who are you?" + PIN screen ----------
+  if (!signedIn) {
+    // Dropdown listing everyone in the group (your previous choice is pre-selected, if any).
     const sel = h('select', { 'aria-label': 'Your name' },
       h('option', { value: '' }, 'Choose your name'),
-      pub.members.map(m => h('option', { value: m.id }, m.name))
+      pub.members.map(m => h('option', Object.assign({ value: m.id }, m.id === me ? { selected: '' } : {}), m.name))
     );
+
+    // The PIN box (dots instead of digits; number keypad on phones).
+    const pinBox = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: String(pub.pinLength), placeholder: 'Your PIN', 'aria-label': 'Your PIN' });
+
+    // Check the name + PIN with the server. If correct, remember both on this device and open the home page.
+    const login = guard(async () => {
+      if (!sel.value) throw new Error('Choose your name first.');
+      await api('login', { body: { memberId: +sel.value, pin: pinBox.value } });
+      localStorage.me = sel.value;
+      localStorage.pin = pinBox.value;
+      participant()
+    });
+    pinBox.addEventListener('keydown', e => { if (e.key === 'Enter') login() });
+
+    err.textContent = loginMessage;   // e.g. "Your PIN has changed..." after being sent back here
 
     app.replaceChildren(
       h('section', { class: 'screen welcome' },
@@ -763,15 +803,18 @@ async function participant() {
             hasDate ? dateBadge(s.date) : null
           ),
 
-          // If there are participants: the picker card and a button that remembers your choice.
+          // If there are participants: the name + PIN card and the sign-in button.
           // Otherwise: a "no one here yet" message.
           pub.members.length
             ? [
                 h('div', { class: 'card card-pad stack gap-16' },
                   h('h2', {}, 'Who are you?'),
-                  field(sel)
+                  field(sel),
+                  field(pinBox),
+                  h('p', { class: 'waiting-copy', style: 'margin:0' }, 'Your organiser will have given you a ' + pub.pinLength + '-digit PIN.'),
+                  err
                 ),
-                btn('Let’s Go', () => { if (sel.value) { localStorage.me = sel.value; participant() } })
+                btn('Let’s Go', login)
               ]
             : h('div', { class: 'card waiting' },
                 h('p', { class: 'waiting-title' }, 'No one here yet'),
@@ -811,12 +854,34 @@ async function participant() {
     saved.textContent = 'Saved!'
   });
 
+  // ---------- Change my PIN ----------
+  // Two boxes (new PIN + the same again to avoid typos) and the action behind the button.
+  const pinAttrs = ph => ({ type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: String(pub.pinLength), placeholder: ph, 'aria-label': ph });
+  const np = h('input', pinAttrs('New PIN')),
+        np2 = h('input', pinAttrs('Type the new PIN again'));
+
+  // Shows "PIN changed!" (or the problem) right under the button.
+  const pinMsg = h('p', { class: 'waiting-copy', role: 'status' });
+  const changePin = async () => {
+    pinMsg.className = 'waiting-copy';
+    pinMsg.textContent = '';
+    try {
+      if (np.value !== np2.value) throw new Error('The two PINs don’t match.');
+      // The server checks your current PIN (sent automatically) and then saves the new one.
+      await api('pin', { body: { memberId: me, newPin: np.value } });
+      localStorage.pin = np.value;   // keep this device signed in with the new PIN
+      np.value = np2.value = '';
+      pinMsg.textContent = 'PIN changed!'
+    }
+    catch (e) { pinMsg.className = 'err'; pinMsg.textContent = e.message }
+  };
+
   // "match" holds either the waiting message, the reveal button, or the revealed person.
   const match = h('div', { class: 'stack gap-24' });
 
-  // The "Not you?" button (forgets the chosen name on this device).
+  // The "Not you?" button (forgets the chosen name and PIN on this device).
   // It is removed after you reveal who you drew, since switching identity then makes no sense.
-  const notYou = h('button', { class: 'link', onclick: () => { delete localStorage.me; participant() } }, 'Not you?');
+  const notYou = h('button', { class: 'link', onclick: () => { delete localStorage.me; delete localStorage.pin; participant() } }, 'Not you?');
 
   // The white card with the gift box picture and "Your Christmas Match" caption.
   // "inner" is what goes under the caption (the reveal button or the person's name).
@@ -893,6 +958,16 @@ async function participant() {
               saved
             )
           )
+        ),
+
+        // Change my PIN: as often as you like.
+        h('section', { class: 'card card-pad stack gap-16' },
+          h('h2', {}, 'Change my PIN'),
+          h('p', { class: 'waiting-copy', style: 'margin:0' }, 'Pick a new ' + pub.pinLength + '-digit PIN. You’ll use it the next time you sign in on another device.'),
+          field(np),
+          field(np2),
+          h('button', { class: 'add', type: 'button', onclick: changePin }, 'Change PIN'),
+          pinMsg
         )
       ),
 
@@ -901,7 +976,7 @@ async function participant() {
   );
 
   // Fetch and show your saved answers.
-  loadAnswers()
+  guard(loadAnswers)()
 }
 
 
@@ -948,7 +1023,8 @@ async function admin() {
         sb = h('input', { value: d.settings.budget, placeholder: 'Budget, e.g. ₹1,000', 'aria-label': 'Budget' });
 
   // Input for adding a participant.
-  const mn = h('input', { placeholder: 'Participant name', 'aria-label': 'Participant name' });
+  const mn = h('input', { placeholder: 'Participant name', 'aria-label': 'Participant name' }),
+        mp = h('input', { type: 'text', inputmode: 'numeric', maxlength: String(d.pinLength), placeholder: 'Starting PIN', 'aria-label': 'Starting PIN' });
 
   // Dropdown options: a placeholder followed by every participant.
   const opts = ph => [h('option', { value: '' }, ph), ...d.members.map(m => h('option', { value: m.id }, m.name))];
@@ -984,20 +1060,34 @@ async function admin() {
         )
       ),
 
-      // ----- Participants: list with × buttons (hidden after the draw) and an add form -----
+      // ----- Participants: PIN buttons, × buttons (hidden after the draw) and an add form -----
       sec(
         h('h2', {}, 'Participants (' + d.members.length + ')'),
+        h('p', { class: 'mute', style: 'margin:0' }, 'You choose each person’s PIN and tell them. Saved PINs can’t be shown again; use Reset PIN to pick a new one.'),
         h('div', { class: 'stack gap-8' },
-          d.members.map(m =>
-            h('div', { class: 'pill' },
-              m.name,
-              d.drawn ? null : h('button', { class: 'x', 'aria-label': 'Remove ' + m.name, onclick: a(() => api('admin/members/' + m.id, { method: 'DELETE' })) }, '×')
+          d.members.map(m => {
+            // Hidden row for typing a new PIN for this person (opened by "Set PIN" / "Reset PIN").
+            const newPin = h('input', { type: 'text', inputmode: 'numeric', maxlength: String(d.pinLength), placeholder: 'New PIN', 'aria-label': 'New PIN for ' + m.name });
+            const pinRow = h('div', { class: 'row', style: 'display:none' },
+              field(newPin),
+              btn('Save PIN', a(() => api('admin/pin', { body: { memberId: m.id, pin: newPin.value } })), 'sm')
+            );
+            return h('div', { class: 'stack gap-8' },
+              h('div', { class: 'pill' },
+                h('span', {}, m.name, m.hasPin ? null : h('span', { class: 'mute' }, ' (no PIN yet)')),
+                h('span', { class: 'row', style: 'flex-wrap:nowrap;gap:12px' },
+                  h('button', { class: 'link', onclick: () => { pinRow.style.display = pinRow.style.display === 'none' ? 'flex' : 'none' } }, m.hasPin ? 'Reset PIN' : 'Set PIN'),
+                  d.drawn ? null : h('button', { class: 'x', 'aria-label': 'Remove ' + m.name, onclick: a(() => api('admin/members/' + m.id, { method: 'DELETE' })) }, '×')
+                )
+              ),
+              pinRow
             )
-          )
+          })
         ),
         d.drawn ? null : h('div', { class: 'row' },
           field(mn),
-          btn('Add', a(() => api('admin/members', { body: { name: mn.value } })), 'sm')
+          field(mp),
+          btn('Add', a(() => api('admin/members', { body: { name: mn.value, pin: mp.value } })), 'sm')
         )
       ),
 

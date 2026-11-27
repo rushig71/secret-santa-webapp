@@ -6,8 +6,8 @@ A small web app for running a Secret Santa name draw with friends, family or col
 
 - **Fixed draw.** Names are drawn once on the server and saved. Everyone sees the same result on every device.
 - **Hidden exclusions.** The organiser can stop specific people from drawing each other (optionally both ways). Exclusions never reach participant pages.
-- **No sign-in.** Participants open a shared link and pick their own name from a dropdown.
-- **Wish lists.** Each person adds gift ideas, each with a title and an optional link. Your Secret Santa sees your list after the draw.
+- **Simple PIN sign-in.** No email or accounts: participants pick their name and enter a PIN that the organiser chose for them. They can change their own PIN any time.
+- **Questionnaire.** Each person answers the same 5 fun questions. Your Secret Santa sees your answers after the draw.
 - **Organiser can play.** The admin page never shows who drew whom.
 - **Safe redraws.** The draw is locked after it runs. A "Reset draw" button (with a confirmation) lets the organiser redo it.
 
@@ -18,11 +18,11 @@ A small web app for running a Secret Santa name draw with friends, family or col
 | `public/index.html` | The whole front-end (participant view at `/`, organiser view at `/#admin`) |
 | `public/favicon.svg` | The browser tab icon |
 | `src/index.js` | The Worker: serves the API under `/api/*` and everything else from `public/` |
-| `schema.sql` | Database tables: `settings`, `members`, `exclusions`, `wishes` |
+| `schema.sql` | Database tables: `settings`, `members`, `exclusions`, `answers`, `pins` |
 | `wrangler.toml` | Worker configuration and database binding |
 | `.dev.vars` | Your organiser password (`ADMIN_KEY`). Never share or commit this file |
 
-The draw uses a randomised backtracking search. Nobody draws themselves or someone they are excluded from. If the exclusions make a valid draw impossible, the organiser is told and nothing is saved. At least 3 participants are needed.
+The draw uses a randomised backtracking search. Nobody draws themselves or someone they are excluded from. If the exclusions make a valid draw impossible, the organiser is told and nothing is saved. At least 2 participants are needed (nobody can draw only themselves).
 
 ## Requirements
 
@@ -58,9 +58,9 @@ The first time you start it, Windows may show a firewall prompt. Allowing it on 
 
 1. Open `/#admin` and log in.
 2. Set the event name, date and budget.
-3. Add all participants.
+3. Add all participants. Choose a starting PIN for each one (4 digits) and tell them privately.
 4. Add any exclusions (for example, couples who shouldn't draw each other).
-5. Share the participant link and ask everyone to add their wish list.
+5. Share the participant link, and give each person their PIN. Ask everyone to fill in their answers.
 6. When everyone is ready, press **Draw names**.
 7. Participants return to the link and tap **Reveal who I drew**.
 
@@ -94,7 +94,7 @@ Run these from the project folder (the one with `wrangler.toml`):
 ```
 npx wrangler d1 execute santa --local --command "SELECT * FROM members"
 npx wrangler d1 execute santa --local --command "SELECT * FROM exclusions"
-npx wrangler d1 execute santa --local --command "SELECT * FROM wishes"
+npx wrangler d1 execute santa --local --command "SELECT * FROM answers"
 npx wrangler d1 execute santa --local --command "SELECT * FROM settings"
 ```
 
@@ -109,6 +109,38 @@ You can also open the SQLite file under `.wrangler/state/v3/d1/miniflare-D1Datab
 ## Data and backups
 
 All data is stored in `.wrangler/state/` inside the project folder and survives restarts. To back up, copy that folder somewhere safe, ideally before the draw. Deleting it wipes everything.
+
+## Changing the questions
+
+The questions live in ONE place: the `QUESTIONS` list near the top of `src/index.js`. The page asks the server for that list, so nothing in `public/index.html` needs to change.
+
+- Fixing a typo or rewording a question: edit the text. Existing answers stay and show under the new wording.
+- Adding a question: add it to the END of the list.
+- Removing or re-ordering questions: answers are saved by question number, so old answers would line up with the wrong questions. Clear them first:
+  `npx wrangler d1 execute santa --local --command "DELETE FROM answers"` (add `--remote` for the live site).
+
+Redeploy with `npx wrangler deploy` after changing them. The headings "My answers" and "<name>'s answers" are in `public/index.html`.
+
+## Updating an existing database (one time)
+
+If your database was created before the questionnaire or PINs existed, add the new tables once. It is safe to run more than once and keeps all existing data:
+
+```
+npm run db:init
+npx wrangler d1 execute santa --remote --file=schema.sql
+```
+
+The first command updates your local test database, the second the live one. The old `wishes` table is simply no longer used.
+
+## PINs
+
+- **Starting PIN:** you choose it when adding a participant on `/#admin`.
+- **Forgotten PIN:** press **Reset PIN** next to the person's name, type the new value you want, and **Save PIN**. This also clears any lock-out. Anyone already signed in on another device with the old PIN is asked for the new one on their next visit.
+- **Changing it themselves:** after signing in, the "Change my PIN" card at the bottom of their page. They can do it as often as they like.
+- **Signing in:** the PIN is remembered on that device, so people only type it again on a new device or after pressing "Not you?".
+- **Storage:** only a salted hash is saved, so PINs can't be read back from the database, not even by you.
+- **Lock-out:** 5 wrong tries in a row locks that person for 60 seconds (`MAX_WRONG_TRIES` and `LOCK_SECONDS` at the top of `src/index.js`). The number of digits is `PIN_LENGTH` in the same place.
+- **Existing participants** (added before PINs existed) have no PIN yet. They see "your organiser hasn't set a PIN" until you press **Set PIN** next to their name.
 
 ## Changing the favicon
 
@@ -127,7 +159,7 @@ The icon is `public/favicon.svg`, referenced in the `<head>` of `public/index.ht
 
 ## Security notes
 
-- There is no participant login by design. Anyone with the link can pick any name, see that person's assignment and edit their wish list. Only share the link with people you trust.
+- Participants sign in with a 4-digit PIN. That is a light lock for a group you trust, not strong security: a 4-digit PIN has only 10,000 possibilities, and the 60-second lock after 5 wrong tries only slows guessing down. Someone can also deliberately lock another person out for a minute by typing wrong PINs for them. Share the link only with people you trust, and give out PINs privately.
 - The organiser password is stored in `.dev.vars` and sent as a request header, so keep the app on trusted networks or behind the HTTPS tunnel.
 - Exclusions and assignments are only exposed through organiser-only or per-person endpoints, but anyone with access to the database files on your PC can read everything.
 - `wrangler dev` is a development server. It is fine for a small group for a few weeks, not for public production use.
@@ -136,4 +168,4 @@ The icon is `public/favicon.svg`, referenced in the `<head>` of `public/index.ht
 
 - Single event per installation. For a second group, copy the project to a new folder with its own database.
 - No email notifications or reminders.
-- Wish lists support titles and links only (no images or prices).
+- Answers are plain text (up to 500 characters each).

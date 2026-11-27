@@ -15,3 +15,12 @@ CREATE TABLE IF NOT EXISTS answers (
   answer TEXT NOT NULL,
   PRIMARY KEY (member_id, q)
 );
+-- One row per person who has a PIN. Only a salted hash is stored, never the PIN itself.
+-- "fails" counts wrong tries in a row; "locked_until" is a unix time (seconds) while locked out.
+CREATE TABLE IF NOT EXISTS pins (
+  member_id INTEGER PRIMARY KEY,
+  salt TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  fails INTEGER NOT NULL DEFAULT 0,
+  locked_until INTEGER NOT NULL DEFAULT 0
+);

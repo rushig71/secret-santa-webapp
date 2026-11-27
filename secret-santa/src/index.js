@@ -24,8 +24,9 @@ const J = (d, s = 200) => new Response(JSON.stringify(d), {
 });
 
 // bad = shortcut for sending an error message as JSON.
-//   m = the message shown to the user, s = status code (400 = bad request by default).
-const bad = (m, s = 400) => J({ error: m }, s);
+//   m = the message shown to the user, s = status code (400 = bad request by default),
+//   code = optional short label the web page can react to (e.g. 'pin' = wrong or outdated PIN).
+const bad = (m, s = 400, code) => J({ error: m, code }, s);
 
 // shuffle = randomly reorders a list in place (Fisher-Yates shuffle) and returns it.
 // Used by the draw so the result is random.
@@ -60,6 +61,66 @@ const QUESTIONS = [
   'What’s the kind of surprise that would instantly put you in a good mood?',
   'If your personality had a little theme, would it be cosy, artsy, adventurous, bougie or chaotic?'
 ];
+
+
+// ---------------------------------------------------------------------
+// PINs (a light lock so people can't casually open each other's page)
+//
+// The organiser chooses everyone's starting PIN on the admin page. Participants
+// send their PIN with every request (in the "x-pin" header) and can change it themselves.
+// PINs are never stored as typed: only a salted SHA-256 hash is saved.
+// This is a deterrent for a group you trust, not strong security: a 4-digit PIN
+// has only 10,000 possibilities, so after a few wrong tries in a row the person is
+// locked out for a minute.
+// ---------------------------------------------------------------------
+const PIN_LENGTH = 4;                                   // number of digits in a PIN
+const PIN_RE = new RegExp('^\\d{' + PIN_LENGTH + '}$');  // "exactly PIN_LENGTH digits"
+const MAX_WRONG_TRIES = 5;                              // wrong PINs in a row before a lock
+const LOCK_SECONDS = 60;                                // how long the lock lasts
+
+// Bytes -> hex text, a random salt, and the salted hash of a PIN.
+const toHex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const newSalt = () => toHex(crypto.getRandomValues(new Uint8Array(16)));
+const hashPin = async (salt, pin) => toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pin)));
+
+// Saves (or replaces) a person's PIN and clears any wrong-try lock.
+async function savePin(db, memberId, pin) {
+  const salt = newSalt(), hash = await hashPin(salt, pin);
+  await db.prepare(
+    'INSERT INTO pins(member_id,salt,hash,fails,locked_until) VALUES(?,?,?,0,0) ' +
+    'ON CONFLICT(member_id) DO UPDATE SET salt=excluded.salt, hash=excluded.hash, fails=0, locked_until=0'
+  ).bind(memberId, salt, hash).run();
+}
+
+// Checks a person's PIN. Returns null when it is correct, otherwise a ready-made error
+// response that the caller should send back as-is.
+async function checkPin(db, memberId, pin) {
+  pin = String(pin || '');
+
+  const row = await db.prepare('SELECT salt,hash,fails,locked_until FROM pins WHERE member_id=?').bind(memberId).first();
+
+  // No PIN saved for this person yet: the organiser still has to set one.
+  if (!row) return bad('Your organiser hasn’t set a PIN for you yet.', 403, 'nopin');
+
+  // Nothing typed at all: refuse without counting it as a wrong try.
+  if (!pin) return bad('Enter your PIN.', 403, 'pin');
+
+  // Temporarily locked after too many wrong tries (even the right PIN is refused until it ends).
+  const now = Math.floor(Date.now() / 1000);
+  if (row.locked_until > now) return bad('Too many wrong tries. Please wait ' + (row.locked_until - now) + ' seconds and try again.', 429, 'locked');
+
+  // Correct PIN: forget any earlier wrong tries.
+  if (await hashPin(row.salt, pin) === row.hash) {
+    if (row.fails) await db.prepare('UPDATE pins SET fails=0 WHERE member_id=?').bind(memberId).run();
+    return null;
+  }
+
+  // Wrong PIN: count it, and lock the person out for a bit once the limit is reached.
+  const fails = row.fails + 1;
+  if (fails >= MAX_WRONG_TRIES) await db.prepare('UPDATE pins SET fails=0, locked_until=? WHERE member_id=?').bind(now + LOCK_SECONDS, memberId).run();
+  else await db.prepare('UPDATE pins SET fails=? WHERE member_id=?').bind(fails, memberId).run();
+  return bad('That PIN doesn’t match.', 403, 'pin');
+}
 
 
 // ---------------------------------------------------------------------
@@ -166,12 +227,33 @@ export default {
           settings: { name: s.name, date: s.date, budget: s.budget },
           drawn: s.drawn === '1',
           questions: QUESTIONS,
+          pinLength: PIN_LENGTH,
           members: results
         });
       }
 
+      // POST /api/login -> checks a person's PIN. Body: { memberId, pin }.
+      if (p[0] === 'login' && m === 'POST') {
+        const bounce = await checkPin(db, +body.memberId, body.pin);
+        return bounce || J({ ok: true });
+      }
+
+      // POST /api/pin -> a participant changes their own PIN. Body: { memberId, newPin }.
+      // Their current PIN is checked first (sent in the "x-pin" header like every other call).
+      if (p[0] === 'pin' && m === 'POST') {
+        const bounce = await checkPin(db, +body.memberId, req.headers.get('x-pin'));
+        if (bounce) return bounce;
+        if (!PIN_RE.test(String(body.newPin || ''))) return bad('PIN must be exactly ' + PIN_LENGTH + ' digits.');
+        await savePin(db, +body.memberId, String(body.newPin));
+        return J({ ok: true });
+      }
+
       // GET /api/assignment/<id> -> who person <id> drew, plus that person's questionnaire answers.
       if (p[0] === 'assignment' && m === 'GET') {
+        // Only the person themselves (with their PIN) may see who they drew.
+        const bounce = await checkPin(db, +p[1], req.headers.get('x-pin'));
+        if (bounce) return bounce;
+
         // Look up the person asking and who they drew.
         const me = await db.prepare('SELECT drawn_id FROM members WHERE id=?').bind(+p[1]).first();
 
@@ -198,6 +280,10 @@ export default {
         // GET /api/answers/<memberId> -> that person's saved answers, as [{ q, answer }, ...].
         // "q" is the question number (its position in QUESTIONS, starting at 0).
         if (m === 'GET') {
+          // PIN needed: these are your own answers.
+          const bounce = await checkPin(db, +p[1], req.headers.get('x-pin'));
+          if (bounce) return bounce;
+
           const { results } = await db.prepare('SELECT q,answer FROM answers WHERE member_id=? ORDER BY q').bind(+p[1]).all();
           return J(results);
         }
@@ -206,6 +292,10 @@ export default {
         // The body looks like { memberId: 3, answers: [text for question 0, text for question 1, ...] }.
         if (m === 'POST') {
           const memberId = +body.memberId;
+
+          // PIN needed: only you may change your own answers.
+          const bounce = await checkPin(db, memberId, req.headers.get('x-pin'));
+          if (bounce) return bounce;
 
           // The person must exist.
           const known = await db.prepare('SELECT id FROM members WHERE id=?').bind(memberId).first();
@@ -243,9 +333,10 @@ export default {
 
         // GET /api/admin -> everything the organiser page needs, including exclusions.
         if (!sub && m === 'GET') {
-          const mem = (await db.prepare('SELECT id,name FROM members ORDER BY name').all()).results;
+          // hasPin = whether the organiser has set a PIN for that person yet (the PIN itself is never sent).
+          const mem = (await db.prepare('SELECT m.id, m.name, (p.member_id IS NOT NULL) AS hasPin FROM members m LEFT JOIN pins p ON p.member_id = m.id ORDER BY m.name').all()).results;
           const ex = (await db.prepare('SELECT giver,receiver FROM exclusions').all()).results;
-          return J({ settings: s, drawn, members: mem, exclusions: ex });
+          return J({ settings: s, drawn, pinLength: PIN_LENGTH, members: mem, exclusions: ex });
         }
 
         // POST /api/admin/settings -> save event name, date and budget (all three at once).
@@ -258,7 +349,7 @@ export default {
           return J({ ok: true });
         }
 
-        // POST /api/admin/members -> add a participant.
+        // POST /api/admin/members -> add a participant together with their starting PIN. Body: { name, pin }.
         if (sub === 'members' && m === 'POST') {
           // Changing the group after the draw would break it, so block that.
           if (drawn) return bad('Reset the draw before changing participants.');
@@ -266,8 +357,19 @@ export default {
           const name = String(body.name || '').trim().slice(0, 60);
           if (!name) return bad('Enter a name.');
 
+          // The organiser must choose a starting PIN for the person.
+          const pin = String(body.pin || '');
+          if (!PIN_RE.test(pin)) return bad('Choose a PIN of exactly ' + PIN_LENGTH + ' digits for this person.');
+          const salt = newSalt(), hash = await hashPin(salt, pin);
+
+          // Add the person and their PIN together (all or nothing).
           // The database requires unique names, so a duplicate makes the insert fail.
-          try { await db.prepare('INSERT INTO members(name) VALUES(?)').bind(name).run(); }
+          try {
+            await db.batch([
+              db.prepare('INSERT INTO members(name) VALUES(?)').bind(name),
+              db.prepare('INSERT INTO pins(member_id,salt,hash) SELECT id,?,? FROM members WHERE name=?').bind(salt, hash, name)
+            ]);
+          }
           catch { return bad('That name is already in the group.'); }
 
           return J({ ok: true });
@@ -279,12 +381,23 @@ export default {
 
           const id = +p[2];
 
-          // Remove the person, their answers, and any exclusions involving them, in one go.
+          // Remove the person, their answers, their PIN, and any exclusions involving them, in one go.
           await db.batch([
             db.prepare('DELETE FROM members WHERE id=?').bind(id),
             db.prepare('DELETE FROM answers WHERE member_id=?').bind(id),
+            db.prepare('DELETE FROM pins WHERE member_id=?').bind(id),
             db.prepare('DELETE FROM exclusions WHERE giver=? OR receiver=?').bind(id, id)
           ]);
+          return J({ ok: true });
+        }
+
+        // POST /api/admin/pin -> set or reset a participant's PIN to a value YOU choose.
+        // Body: { memberId, pin }. Also clears any "too many wrong tries" lock. Works any time.
+        if (sub === 'pin' && m === 'POST') {
+          if (!PIN_RE.test(String(body.pin || ''))) return bad('Choose a PIN of exactly ' + PIN_LENGTH + ' digits.');
+          const known = await db.prepare('SELECT id FROM members WHERE id=?').bind(+body.memberId).first();
+          if (!known) return bad('Unknown person.');
+          await savePin(db, +body.memberId, String(body.pin));
           return J({ ok: true });
         }
 
