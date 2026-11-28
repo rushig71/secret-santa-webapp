@@ -55,10 +55,10 @@ const shuffle = a => {
 //     wrong questions. Clear the answers first (see README) if you do that.
 // ---------------------------------------------------------------------
 const QUESTIONS = [
-  'What’s something you’ve been unusually obsessed with lately?',
-  'What’s one thing you find yourself reaching for way too often?',
+  'What is closest to your ideal saturday afternoon: curled up somewhere cosy / out exploring / making or creating something / out with people / treating yourself somewhere fancy',
+  'You’ve got an unexpected free hour and a small budget in a market. Where do you drift to first? bookstalls and stationery / food and snack stalls / plants and home décor / quirky gadgets and gizmos / handmade crafts and trinkets',
   'What’s a small, unnecessary purchase that you can never really resist?',
-  'What’s the kind of surprise that would instantly put you in a good mood?',
+  'What’s something you’ve fallen down a rabbit hole with lately? (a hobby, show, food, game, anything)',
   'If your personality had a little theme, would it be cosy, artsy, adventurous, bougie or chaotic?'
 ];
 

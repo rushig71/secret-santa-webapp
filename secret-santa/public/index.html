@@ -121,6 +121,9 @@ h2 {
 .gap-16 {
   gap: 16px;
 }
+.gap-32 {
+  gap: 32px;
+}
 .gap-8 {
   gap: 8px;
 }
@@ -343,6 +346,94 @@ h2 {
   font-weight: 400;
   font-size: 56px;
   line-height: 1.4;
+}
+
+/* Locked "Christmas Match" card: a wrapped gift with a ribbon, a lock badge and pale snowflakes.
+   Used when names are not drawn yet, and when they are drawn but not revealed. */
+.wrapped {
+  position: relative;
+  overflow: hidden;
+  background: #fffbf2;
+  border: 1px solid #e3cf8a;
+  border-radius: 12px;
+  text-align: center;
+}
+.wrapped-top {
+  position: relative;
+  height: 146px;
+}
+.ribbon-v {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 34px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #c60b00 0 3px, #f2c35b 3px 5px, #c60b00 5px calc(100% - 5px), #f2c35b calc(100% - 5px) calc(100% - 3px), #c60b00 calc(100% - 3px));
+}
+.ribbon-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 60px;
+  height: 30px;
+  background: #c60b00;
+}
+.wrapped-lock {
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  width: 70px;
+  height: 70px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fffbf2;
+  border: 2px solid #e3b84b;
+  border-radius: 50%;
+}
+.wrapped-lock svg {
+  width: 34px;
+  height: 34px;
+}
+.wflake {
+  position: absolute;
+  color: #d5e5d0;
+  transform: translate(-50%, -50%);
+}
+.wflake svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wf1 { left: 12%; top: 24px; width: 32px; height: 32px; }
+.wf2 { left: 87%; top: 19px; width: 22px; height: 22px; }
+.wf3 { left: 12%; top: 114px; width: 20px; height: 20px; }
+.wf4 { left: 89%; top: 112px; width: 38px; height: 38px; }
+.wrapped-body {
+  padding: 0 20px 26px;
+}
+.wrap-kicker {
+  margin: 20px 0 0;
+  font-size: 14px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.wrap-title {
+  margin: 10px 0 0;
+  font-family: Fraunces, serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.2;
+  font-variation-settings: "SOFT" 0, "WONK" 1, "opsz" 30;
+}
+.wrap-sub {
+  max-width: 230px;
+  margin: 12px auto 0;
+  line-height: 1.6;
+  color: var(--body);
 }
 
 /* "Waiting" / "no one here yet" message cards */
@@ -732,6 +823,44 @@ const dateBadge = raw => {
 // The price-cap banner shown on participant pages.
 const capNote = b => h('div', { class: 'cap' }, lights('banner'), h('p', {}, 'Host has kept the price cap for this Secret Santa ' + priceText(b)));
 
+// ----- The locked "Christmas Match" card (wrapped gift) -----
+// Small icons drawn as SVG. They are fixed text written here (nothing typed by users),
+// so it is safe to insert them into the page as HTML.
+const LOCK_SVG = '<svg viewBox="0 0 32 32"><path d="M9.5 14v-4a6.5 6.5 0 0 1 13 0v4" fill="none" stroke="#e9b949" stroke-width="3"/><rect x="6" y="14" width="20" height="15" rx="3" fill="#e9b949"/><circle cx="16" cy="20.5" r="2.2" fill="#5a4300"/><rect x="15" y="21" width="2" height="4.5" rx="1" fill="#5a4300"/></svg>';
+
+// A six-armed snowflake: one arm (a line with two little V-shaped branches) repeated at 0, 60 and 120 degrees.
+const FLAKE_ARM = '<path d="M12 2v20M8.5 5L12 8l3.5-3M8.5 19L12 16l3.5 3"/>';
+const FLAKE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+  + [0, 60, 120].map(deg => '<g transform="rotate(' + deg + ' 12 12)">' + FLAKE_ARM + '</g>').join('')
+  + '</svg>';
+
+// A small element that holds one of the SVG icons above.
+const svgIcon = (cls, markup) => {
+  const e = h('span', { class: cls, 'aria-hidden': 'true' });
+  e.innerHTML = markup;
+  return e
+};
+
+// The locked card: wrapped-gift picture on top (ribbons, lock badge, snowflakes),
+// then "YOUR CHRISTMAS MATCH", a title and a line of small text.
+// "title" and "text" are what change between the two situations (names not drawn yet / drawn but not revealed).
+const wrappedCard = (title, text) => h('div', { class: 'wrapped' },
+  h('div', { class: 'wrapped-top' },
+    svgIcon('wflake wf1', FLAKE_SVG),
+    svgIcon('wflake wf2', FLAKE_SVG),
+    svgIcon('wflake wf3', FLAKE_SVG),
+    svgIcon('wflake wf4', FLAKE_SVG),
+    h('div', { class: 'ribbon-v' }),    // vertical ribbon
+    h('div', { class: 'ribbon-h' }),    // horizontal ribbon
+    svgIcon('wrapped-lock', LOCK_SVG)   // round lock badge in the middle
+  ),
+  h('div', { class: 'wrapped-body' },
+    h('p', { class: 'wrap-kicker' }, 'Your Christmas Match'),
+    h('p', { class: 'wrap-title' }, title),
+    h('p', { class: 'wrap-sub' }, text)
+  )
+);
+
 // One question + answer row, for the person you drew (same grey list-row style as before).
 // The CSS keeps any line breaks the person typed in their answer.
 const qaItem = (question, answer) => h('div', { class: 'pill' },
@@ -914,12 +1043,13 @@ async function participant() {
     notYou.remove()
   });
 
-  // Names drawn already -> show the reveal button. Not yet -> show a waiting message.
-  if (pub.drawn) match.append(gift(btn('Reveal who I drew', reveal)));
-  else match.append(h('div', { class: 'card waiting' },
-    h('p', { class: 'waiting-title' }, 'Names haven’t been drawn yet'),
-    h('p', { class: 'waiting-copy' }, 'Fill in your answers while you wait. You’ll see who you drew here once the organiser draws names.')
+  // Names drawn but not revealed yet: the wrapped-gift card plus a "Reveal Now" button underneath.
+  // Names not drawn yet: the same card with different text, and no button (there is nothing to reveal yet).
+  if (pub.drawn) match.append(h('div', { class: 'stack gap-32' },
+    wrappedCard('Still under wraps', 'A little Christmas mystery, picked just for you.'),
+    btn('Reveal Now', reveal)
   ));
+  else match.append(wrappedCard('Still in the hat', 'The draw hasn’t happened yet. Fill in your answers while you wait.'));
 
   // Put the whole page together.
   app.replaceChildren(
