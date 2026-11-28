@@ -39,7 +39,7 @@ body {
   font-size: 16px;
   line-height: 1.4;
 }
-button,input,select {
+button,input,select,textarea {
   font: inherit;
   color: inherit;
 }
@@ -148,7 +148,7 @@ h2 {
   padding: 12px;
   border: 1px solid #e3e3e3;
 }
-.field input,.field select {
+.field input,.field select,.field textarea {
   width: 100%;
   border: 0;
   background: transparent;
@@ -156,6 +156,10 @@ h2 {
   outline: none;
   font-weight: 500;
   line-height: 1.4;
+}
+.field textarea {
+  resize: vertical;
+  min-height: 52px;
 }
 .field input::placeholder {
   color: #555;
@@ -215,7 +219,7 @@ h2 {
   background: #7a0600;
 }
 
-/* Outlined glowing "Add to wish list" button */
+/* Outlined glowing "Save my answers" button */
 .add {
   width: 100%;
   border: 2px solid #ed372c;
@@ -477,13 +481,13 @@ h2 {
   min-height: 72px;
 }
 
-/* Wish list sections are white cards now: the decoration sits on the card's top edge */
+/* The answer sections are white cards: the decoration sits on the card's top edge */
 .card.block .deco.corner {
   right: 6px;
   top: -20px;
 }
 
-/* List rows (wish items, participants, exclusions) and the small × buttons */
+/* List rows (answers, participants, exclusions) and the small × buttons */
 .pill {
   background: #f6f6f6;
   border-radius: 12px;
@@ -499,6 +503,26 @@ h2 {
 }
 .pill a {
   color: #000;
+}
+
+/* Questionnaire: the question above each text box, and the question + answer rows */
+.qa-label {
+  margin: 0;
+}
+.qa {
+  flex: 1;
+  min-width: 0;
+}
+.qa p {
+  margin: 0;
+}
+.qa-q {
+  font-size: 13px;
+  color: var(--body);
+}
+.qa-a {
+  margin-top: 2px;
+  white-space: pre-wrap;
 }
 .x {
   flex: none;
@@ -588,37 +612,48 @@ const h = (t, a = {}, ...c) => {
   return e
 };
 
-// api = talk to the backend. Sends the saved admin password (if any) with every call.
+// api = talk to the backend. Sends the saved admin password and/or the saved PIN (if any) with every call.
 //   path = what comes after /api/, o = options (method, body).
 // If the options include a body it is a POST, otherwise a GET unless a method is given.
 // Throws an Error carrying the server's message when the response is not OK.
 async function api(path, o = {}) {
-  const k = localStorage.adminKey;
+  const k = localStorage.adminKey, pin = localStorage.pin;
   const r = await fetch('/api/' + path, {
     method: o.method || (o.body ? 'POST' : 'GET'),
-    headers: { 'content-type': 'application/json', ...(k ? { 'x-admin-key': k } : {}) },
+    headers: { 'content-type': 'application/json', ...(k ? { 'x-admin-key': k } : {}), ...(pin ? { 'x-pin': pin } : {}) },
     body: o.body ? JSON.stringify(o.body) : undefined
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'Something went wrong');
+  if (!r.ok) {
+    // Keep the server's short "code" (e.g. 'pin' = wrong or outdated PIN) so callers can react to it.
+    const e = new Error(d.error || 'Something went wrong');
+    e.code = d.code;
+    throw e
+  }
   return d
 }
 
-// True only for normal web links (http:// or https://), so a wish link can never run code.
-const safeLink = u => /^https?:\/\//i.test(u || '');
-
 // The red error line shown on the page, and "guard" which wraps an action:
 // it clears the old error first and shows any new error instead of crashing.
+// If the server says the saved PIN is outdated, it sends the person back to the PIN screen.
 const err = h('div', { class: 'err', role: 'alert' });
 const guard = fn => async (...a) => {
   err.textContent = '';
   try { await fn(...a) }
-  catch (e) { err.textContent = e.message }
+  catch (e) {
+    if (e.code === 'pin' && localStorage.pin) {
+      // The saved PIN is no longer accepted (changed or reset elsewhere): forget it and ask again.
+      delete localStorage.pin;
+      await participant();
+      err.textContent = 'Your PIN has changed. Please enter the new one.'
+    }
+    else err.textContent = e.message
+  }
 };
 
 
 // =====================================================================
-// SHARED LOOK (decorations, buttons, date badge, price banner, wish items)
+// SHARED LOOK (decorations, buttons, date badge, price banner, answer rows)
 // =====================================================================
 
 // A decorative image inside a box. "cls" picks which crop/position CSS to use.
@@ -697,12 +732,13 @@ const dateBadge = raw => {
 // The price-cap banner shown on participant pages.
 const capNote = b => h('div', { class: 'cap' }, lights('banner'), h('p', {}, 'Host has kept the price cap for this Secret Santa ' + priceText(b)));
 
-// One wish list entry. Shows a clickable link if the item has a safe URL.
-// If a "del" function is given, adds a × button that calls it (only for your own list).
-// "cls" adds an extra CSS class (e.g. "answer" for the green style).
-const wishItem = (w, del, cls = '') => h('div', { class: 'pill ' + cls },
-  h('span', {}, safeLink(w.url) ? h('a', { href: w.url, target: '_blank', rel: 'noopener noreferrer' }, w.title) : w.title),
-  del ? h('button', { class: 'x', 'aria-label': 'Remove ' + w.title, onclick: () => del(w) }, '×') : null
+// One question + answer row, for the person you drew (same grey list-row style as before).
+// The CSS keeps any line breaks the person typed in their answer.
+const qaItem = (question, answer) => h('div', { class: 'pill' },
+  h('div', { class: 'qa' },
+    h('p', { class: 'qa-q' }, question),
+    h('p', { class: 'qa-a' }, answer)
+  )
 );
 
 
@@ -722,13 +758,39 @@ async function participant() {
   const hasDate = !!(s.date || '').trim(),
         hasBudget = !!(s.budget || '').trim();
 
-  // ---------- Step 1: nobody chosen yet -> "Who are you?" screen ----------
-  if (!who) {
-    // Dropdown listing everyone in the group.
+  // ---------- Are we signed in? ----------
+  // Signed in = a person is chosen, their PIN is saved on this device, and the server still accepts it.
+  let signedIn = false, loginMessage = '';
+  if (who && localStorage.pin) {
+    try { await api('login', { body: { memberId: me, pin: localStorage.pin } }); signedIn = true }
+    catch (e) {
+      if (e.code === 'pin') delete localStorage.pin;   // the PIN was changed or reset: forget the old one
+      loginMessage = e.code === 'pin' ? 'Your PIN has changed. Please enter the new one.' : e.message
+    }
+  }
+
+  // ---------- Step 1: not signed in -> "Who are you?" + PIN screen ----------
+  if (!signedIn) {
+    // Dropdown listing everyone in the group (your previous choice is pre-selected, if any).
     const sel = h('select', { 'aria-label': 'Your name' },
       h('option', { value: '' }, 'Choose your name'),
-      pub.members.map(m => h('option', { value: m.id }, m.name))
+      pub.members.map(m => h('option', Object.assign({ value: m.id }, m.id === me ? { selected: '' } : {}), m.name))
     );
+
+    // The PIN box (dots instead of digits; number keypad on phones).
+    const pinBox = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: String(pub.pinLength), placeholder: 'Your PIN', 'aria-label': 'Your PIN' });
+
+    // Check the name + PIN with the server. If correct, remember both on this device and open the home page.
+    const login = guard(async () => {
+      if (!sel.value) throw new Error('Choose your name first.');
+      await api('login', { body: { memberId: +sel.value, pin: pinBox.value } });
+      localStorage.me = sel.value;
+      localStorage.pin = pinBox.value;
+      participant()
+    });
+    pinBox.addEventListener('keydown', e => { if (e.key === 'Enter') login() });
+
+    err.textContent = loginMessage;   // e.g. "Your PIN has changed..." after being sent back here
 
     app.replaceChildren(
       h('section', { class: 'screen welcome' },
@@ -741,15 +803,18 @@ async function participant() {
             hasDate ? dateBadge(s.date) : null
           ),
 
-          // If there are participants: the picker card and a button that remembers your choice.
+          // If there are participants: the name + PIN card and the sign-in button.
           // Otherwise: a "no one here yet" message.
           pub.members.length
             ? [
                 h('div', { class: 'card card-pad stack gap-16' },
                   h('h2', {}, 'Who are you?'),
-                  field(sel)
+                  field(sel),
+                  field(pinBox),
+                  h('p', { class: 'waiting-copy', style: 'margin:0' }, 'Your organiser will have given you a ' + pub.pinLength + '-digit PIN.'),
+                  err
                 ),
-                btn('Let’s Go', () => { if (sel.value) { localStorage.me = sel.value; participant() } })
+                btn('Let’s Go', login)
               ]
             : h('div', { class: 'card waiting' },
                 h('p', { class: 'waiting-title' }, 'No one here yet'),
@@ -765,32 +830,58 @@ async function participant() {
 
   // ---------- Step 2: a person is chosen -> their home page ----------
 
-  // Container for your own wish list items, and the function that (re)loads them.
-  const wl = h('div', { class: 'stack gap-8' });
-  const loadWishes = async () => {
-    const w = await api('wishes/' + me);
-    wl.replaceChildren(...(w.length
-      // Each item gets a × button that deletes it and reloads the list.
-      ? w.map(x => wishItem(x, guard(async x => { await api('wishes/' + x.id + '?member=' + me, { method: 'DELETE' }); loadWishes() })))
-      // Empty list: friendly hint.
-      : [h('p', { class: 'waiting-copy' }, 'Add a few ideas so your Secret Santa knows what you’d like.')]))
+  // ---------- Your own answers ----------
+  // The questions come from the server (see QUESTIONS at the top of src/index.js),
+  // so to change a question you only edit it there.
+  const questions = pub.questions;
+
+  // One text box per question, in the same order as the questions.
+  const boxes = questions.map(q => h('textarea', { rows: '2', maxlength: '500', 'aria-label': q }));
+
+  // A line that says "Saved!" after saving (cleared again as soon as you type something).
+  const saved = h('p', { class: 'waiting-copy', role: 'status' });
+  boxes.forEach(b => b.addEventListener('input', () => { saved.textContent = '' }));
+
+  // Fetch your saved answers and fill them into the boxes.
+  const loadAnswers = async () => {
+    const a = await api('answers/' + me);
+    a.forEach(x => { if (boxes[x.q]) boxes[x.q].value = x.answer })
   };
 
-  // The two inputs for adding a gift idea (title + optional link), and the "Add" action.
-  const t = h('input', { placeholder: 'Gift idea', 'aria-label': 'Gift idea' }),
-        l = h('input', { placeholder: 'Link (optional)', 'aria-label': 'Link', inputmode: 'url' });
-  const add = guard(async () => {
-    await api('wishes', { body: { memberId: me, title: t.value, url: l.value } });
-    t.value = l.value = '';   // clear both inputs
-    loadWishes()
+  // Save all the answers in one go.
+  const save = guard(async () => {
+    await api('answers', { body: { memberId: me, answers: boxes.map(b => b.value) } });
+    saved.textContent = 'Saved!'
   });
+
+  // ---------- Change my PIN ----------
+  // Two boxes (new PIN + the same again to avoid typos) and the action behind the button.
+  const pinAttrs = ph => ({ type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: String(pub.pinLength), placeholder: ph, 'aria-label': ph });
+  const np = h('input', pinAttrs('New PIN')),
+        np2 = h('input', pinAttrs('Type the new PIN again'));
+
+  // Shows "PIN changed!" (or the problem) right under the button.
+  const pinMsg = h('p', { class: 'waiting-copy', role: 'status' });
+  const changePin = async () => {
+    pinMsg.className = 'waiting-copy';
+    pinMsg.textContent = '';
+    try {
+      if (np.value !== np2.value) throw new Error('The two PINs don’t match.');
+      // The server checks your current PIN (sent automatically) and then saves the new one.
+      await api('pin', { body: { memberId: me, newPin: np.value } });
+      localStorage.pin = np.value;   // keep this device signed in with the new PIN
+      np.value = np2.value = '';
+      pinMsg.textContent = 'PIN changed!'
+    }
+    catch (e) { pinMsg.className = 'err'; pinMsg.textContent = e.message }
+  };
 
   // "match" holds either the waiting message, the reveal button, or the revealed person.
   const match = h('div', { class: 'stack gap-24' });
 
-  // The "Not you?" button (forgets the chosen name on this device).
+  // The "Not you?" button (forgets the chosen name and PIN on this device).
   // It is removed after you reveal who you drew, since switching identity then makes no sense.
-  const notYou = h('button', { class: 'link', onclick: () => { delete localStorage.me; participant() } }, 'Not you?');
+  const notYou = h('button', { class: 'link', onclick: () => { delete localStorage.me; delete localStorage.pin; participant() } }, 'Not you?');
 
   // The white card with the gift box picture and "Your Christmas Match" caption.
   // "inner" is what goes under the caption (the reveal button or the person's name).
@@ -803,18 +894,18 @@ async function participant() {
   );
 
   // What happens when you press "Reveal who I drew": ask the server, then show the
-  // person's name and their wish list (green boxes, links only, no delete buttons).
+  // person's name and their answers (grey rows: question in small text, answer below).
   const reveal = guard(async () => {
     const a = await api('assignment/' + me);
     match.replaceChildren(
       gift(h('p', { class: 'match-name' }, a.name)),
       h('section', { class: 'card card-pad block stack gap-16' },
         art('deco snowman corner', 'snowman.webp'),
-        h('h2', {}, a.name + '’s wish list'),
+        h('h2', {}, a.name + '’s answers'),
         h('div', { class: 'stack gap-8' },
-          a.wishes.length
-            ? a.wishes.map(w => wishItem(w, null))
-            : h('p', { class: 'waiting-copy' }, 'They haven’t added any gifts yet. Check back later.')
+          a.answers.length
+            ? a.answers.map(x => qaItem(x.question, x.answer))
+            : h('p', { class: 'waiting-copy' }, 'They haven’t answered the questions yet. Check back later.')
         )
       )
     );
@@ -827,7 +918,7 @@ async function participant() {
   if (pub.drawn) match.append(gift(btn('Reveal who I drew', reveal)));
   else match.append(h('div', { class: 'card waiting' },
     h('p', { class: 'waiting-title' }, 'Names haven’t been drawn yet'),
-    h('p', { class: 'waiting-copy' }, 'Add your wish list while you wait. You’ll see who you drew here once the organiser draws names.')
+    h('p', { class: 'waiting-copy' }, 'Fill in your answers while you wait. You’ll see who you drew here once the organiser draws names.')
   ));
 
   // Put the whole page together.
@@ -851,18 +942,32 @@ async function participant() {
         err,      // error messages appear here
         match,    // waiting message / reveal button / revealed person
 
-        // Your own wish list with the add form.
+        // Your own answers: a labelled box for each question, and a Save button.
         h('section', { class: 'card card-pad block stack gap-16' },
           art('deco mistletoe corner', 'mistletoe.webp'),
-          h('h2', {}, 'My wish list'),
+          h('h2', {}, 'My answers'),
           h('div', { class: 'stack gap-16' },
-            wl,
+            questions.map((q, i) =>
+              h('div', { class: 'stack gap-8' },
+                h('p', { class: 'qa-label' }, (i + 1) + '. ' + q),
+                field(boxes[i])
+              )
+            ),
             h('div', { class: 'stack gap-8' },
-              field(t),
-              field(l),
-              h('button', { class: 'add', type: 'button', onclick: add }, 'Add to wish list')
+              h('button', { class: 'add', type: 'button', onclick: save }, 'Save my answers'),
+              saved
             )
           )
+        ),
+
+        // Change my PIN: as often as you like.
+        h('section', { class: 'card card-pad stack gap-16' },
+          h('h2', {}, 'Change my PIN'),
+          h('p', { class: 'waiting-copy', style: 'margin:0' }, 'Pick a new ' + pub.pinLength + '-digit PIN. You’ll use it the next time you sign in on another device.'),
+          field(np),
+          field(np2),
+          h('button', { class: 'add', type: 'button', onclick: changePin }, 'Change PIN'),
+          pinMsg
         )
       ),
 
@@ -870,8 +975,8 @@ async function participant() {
     )
   );
 
-  // Fetch and show your wish list.
-  loadWishes()
+  // Fetch and show your saved answers.
+  guard(loadAnswers)()
 }
 
 
@@ -918,7 +1023,8 @@ async function admin() {
         sb = h('input', { value: d.settings.budget, placeholder: 'Budget, e.g. ₹1,000', 'aria-label': 'Budget' });
 
   // Input for adding a participant.
-  const mn = h('input', { placeholder: 'Participant name', 'aria-label': 'Participant name' });
+  const mn = h('input', { placeholder: 'Participant name', 'aria-label': 'Participant name' }),
+        mp = h('input', { type: 'text', inputmode: 'numeric', maxlength: String(d.pinLength), placeholder: 'Starting PIN', 'aria-label': 'Starting PIN' });
 
   // Dropdown options: a placeholder followed by every participant.
   const opts = ph => [h('option', { value: '' }, ph), ...d.members.map(m => h('option', { value: m.id }, m.name))];
@@ -954,20 +1060,34 @@ async function admin() {
         )
       ),
 
-      // ----- Participants: list with × buttons (hidden after the draw) and an add form -----
+      // ----- Participants: PIN buttons, × buttons (hidden after the draw) and an add form -----
       sec(
         h('h2', {}, 'Participants (' + d.members.length + ')'),
+        h('p', { class: 'mute', style: 'margin:0' }, 'You choose each person’s PIN and tell them. Saved PINs can’t be shown again; use Reset PIN to pick a new one.'),
         h('div', { class: 'stack gap-8' },
-          d.members.map(m =>
-            h('div', { class: 'pill' },
-              m.name,
-              d.drawn ? null : h('button', { class: 'x', 'aria-label': 'Remove ' + m.name, onclick: a(() => api('admin/members/' + m.id, { method: 'DELETE' })) }, '×')
+          d.members.map(m => {
+            // Hidden row for typing a new PIN for this person (opened by "Set PIN" / "Reset PIN").
+            const newPin = h('input', { type: 'text', inputmode: 'numeric', maxlength: String(d.pinLength), placeholder: 'New PIN', 'aria-label': 'New PIN for ' + m.name });
+            const pinRow = h('div', { class: 'row', style: 'display:none' },
+              field(newPin),
+              btn('Save PIN', a(() => api('admin/pin', { body: { memberId: m.id, pin: newPin.value } })), 'sm')
+            );
+            return h('div', { class: 'stack gap-8' },
+              h('div', { class: 'pill' },
+                h('span', {}, m.name, m.hasPin ? null : h('span', { class: 'mute' }, ' (no PIN yet)')),
+                h('span', { class: 'row', style: 'flex-wrap:nowrap;gap:12px' },
+                  h('button', { class: 'link', onclick: () => { pinRow.style.display = pinRow.style.display === 'none' ? 'flex' : 'none' } }, m.hasPin ? 'Reset PIN' : 'Set PIN'),
+                  d.drawn ? null : h('button', { class: 'x', 'aria-label': 'Remove ' + m.name, onclick: a(() => api('admin/members/' + m.id, { method: 'DELETE' })) }, '×')
+                )
+              ),
+              pinRow
             )
-          )
+          })
         ),
         d.drawn ? null : h('div', { class: 'row' },
           field(mn),
-          btn('Add', a(() => api('admin/members', { body: { name: mn.value } })), 'sm')
+          field(mp),
+          btn('Add', a(() => api('admin/members', { body: { name: mn.value, pin: mp.value } })), 'sm')
         )
       ),
 
